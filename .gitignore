@@ -24,6 +24,9 @@ artifacts/
 cache/
 typechain-types/
 
+# Generated local deployment state
+deployments/local.json
+
 # Editor / OS
 .DS_Store
 .idea/

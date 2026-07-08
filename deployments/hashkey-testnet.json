@@ -2,9 +2,42 @@
   "network": "HashKey Chain Testnet",
   "chainId": 133,
   "contractName": "SettlementGateway",
-  "contractAddress": "_TBD",
-  "deployTxHash": "_TBD",
-  "explorerBaseUrl": "_TBD",
-  "deployedAt": "_TBD",
-  "notes": "All _TBD values will be filled in manually after the settlement contract is actually deployed. Do NOT fabricate or auto-generate any of these values. chainId 133 is the only field known to be real at this stage."
+  "contractAddress": "0xb7B4419f4e59762beBD9139298fA6E6A712E9403",
+  "deployTxHash": "0x60f0413fc89bc53c9291f73146d8074b94fa9c0785a916332cd5dd2d12cc24cc",
+  "explorerBaseUrl": "https://testnet-explorer.hsk.xyz",
+  "deployedAt": "2026-07-08T03:28:37.428Z",
+  "gatewaySigner": "0xC974E6AFEddF9D0c2f4E5aa33D5aCa6711aE2446",
+  "demoAgent": "0xC974E6AFEddF9D0c2f4E5aa33D5aCa6711aE2446",
+  "merchantTreasury": "0xC974E6AFEddF9D0c2f4E5aa33D5aCa6711aE2446",
+  "token": {
+    "symbol": "mUSDC",
+    "decimals": 6,
+    "address": "0x63431ad54ACed83B635DDEeE1ae7b4f5dfB3d65d",
+    "mock": true,
+    "deployTxHash": "0x5791bcaa2451953e3597bf45836fb7b070963e003f073cee31494f91e831245a"
+  },
+  "setupTxHashes": {
+    "setSpendingLimit": "0x56f334992b643f668dae46d8e4bd3f00933228e00e87c887ce9b5f17cbe249f7",
+    "mint": "0xa1b02dfb5bc405ff645056f26f0c5c4bb20c25935f9fdabfcb6ac26a77986a85",
+    "approve": "0x95f661af214211e00729bb27bd052ef3058cee736a19fc9f2eeed7d13c79829e"
+  },
+  "notes": "MVP deployment uses mock ERC-20 tokens. These are not official USDC/USDT contracts; replace with real token configuration before presenting as production stablecoin settlement.",
+  "tokens": {
+    "mUSDC": {
+      "symbol": "mUSDC",
+      "decimals": 6,
+      "address": "0x63431ad54ACed83B635DDEeE1ae7b4f5dfB3d65d",
+      "mock": true,
+      "deployTxHash": "0x5791bcaa2451953e3597bf45836fb7b070963e003f073cee31494f91e831245a"
+    },
+    "mUSDT": {
+      "symbol": "mUSDT",
+      "decimals": 6,
+      "address": "0xB80eeF2d44d5055C4A8Babfb0b8c482Fa0F7cE25",
+      "mock": true,
+      "deployTxHash": "0x782d7d0f8b90a5a7297c0188b8c73d1d33ca3954320c17487c732072800543b8",
+      "mintTxHash": "0x6b93f261773f82c699f65336ab02cc6081527a3f8e0dacf025f1fd8096f5d235",
+      "approveTxHash": "0xe65221f12ad4b465ad58e64485b60eb4406fb5000d646105bcfaf26dcfe4d86e"
+    }
+  }
 }

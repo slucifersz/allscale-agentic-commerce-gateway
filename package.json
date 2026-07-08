@@ -1,0 +1,22 @@
+{
+  "name": "allscale-agentic-commerce-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MVP demo for AllScale agentic commerce settlement on HashKey-compatible chains.",
+  "scripts": {
+    "compile:contracts": "node scripts/compile.js SettlementGateway && node scripts/compile.js MockERC20",
+    "build:contracts": "npm run compile:contracts",
+    "test:contracts": "node scripts/contract-smoke-test.js",
+    "deploy:local": "node scripts/deploy.js --network local",
+    "deploy:hashkey": "node scripts/deploy.js --network hashkey-testnet",
+    "deploy:hashkey-token": "node scripts/deploy-mock-token.js --network hashkey-testnet",
+    "server": "node server/demo-api.js",
+    "check:js": "node --check server/demo-api.js && node --check scripts/deploy.js && node --check scripts/deploy-mock-token.js && node --check scripts/e2e-demo.js && node --check scripts/contract-smoke-test.js",
+    "test:e2e": "node scripts/e2e-demo.js"
+  },
+  "dependencies": {
+    "ethers": "^6.15.0",
+    "solc": "^0.8.30"
+  },
+  "devDependencies": {}
+}
