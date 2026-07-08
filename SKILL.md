@@ -60,7 +60,7 @@ TOKEN_NAME="Mock USDT" TOKEN_SYMBOL=mUSDT npm run deploy:hashkey-token
 2. Never fabricate on-chain data. Unknown deployment values stay `_TBD`.
 3. Never claim KYT / KYC / Primus / BlockSec integrations are live. They are not live in this repo.
 4. Keep the disclaimer verbatim in README and frontend: **"Verification logic shown here is a demonstration. Live KYT / KYC integration is under validation."**
-5. Primus zkTLS means data authenticity with selective disclosure. It is not private payment execution and does not enforce spending limits.
+5. Primus zkTLS means data authenticity with selective disclosure over external data sources (a regulated institution's KYC records; the principal's own mandate system). AllScale is the verifier, not the attested data source. It is not private payment execution and does not enforce spending limits.
 6. Spending limits are enforced by `SettlementGateway`, not by off-chain verification.
 7. If the deploy script uses a mock token on HashKey testnet, label it as mock. Do not present `mUSDC` / `mUSDT` as official USDC/USDT.
 
@@ -75,7 +75,7 @@ TOKEN_NAME="Mock USDT" TOKEN_SYMBOL=mUSDT npm run deploy:hashkey-token
 ## What Is Still Out Of Scope
 
 - Live KYT / AML provider integration
-- Live Primus zkTLS attestation
+- Live Primus zkTLS attestations (identity + mandate)
 - Live integration design for both gates: [docs/verification-integration-design.md](docs/verification-integration-design.md)
 - Real merchant callback persistence
 - Production database

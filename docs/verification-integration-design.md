@@ -25,7 +25,7 @@ architecture.
 | Gate | Check | Provider (architectural intent) | Current implementation |
 |------|-------|--------------------------------|------------------------|
 | Gate 1 | KYT / AML fund-source screening | AllScale KYT service (intended BlockSec-backed integration; BlockSec KYT is used in AllScale's production products, but no integration exists in this repo) | `allScaleKytGate()` — flags a checkout if the agent id contains a demo marker; no external call |
-| Gate 2 | KYC / payer authorization | Primus (zkTLS) | `primusKycGate()` — same demo marker heuristic; no attestation is generated or verified |
+| Gate 2 | Payer verification: principal identity + payment mandate | Primus (zkTLS) | `primusKycGate()` — same demo marker heuristic; no attestation is generated or verified |
 
 Both functions return a `GateResult` (`router/types.ts`) and run **off-chain,
 before settlement**. If either gate fails, the payment is blocked and the
@@ -95,57 +95,88 @@ None. Gate 1 is purely off-chain. `SettlementGateway.sol` is unchanged.
 
 ---
 
-## 3. Gate 2 — Live payer authorization (Primus zkTLS)
+## 3. Gate 2 — Live payer verification (Primus zkTLS)
 
 ### Precise scope (framing must not drift)
 
 Primus zkTLS provides **data authenticity with selective disclosure**. It
 does not produce KYC or authorization conclusions itself. What it can prove
-is that an AllScale-controlled data source genuinely contains specific
-states — e.g. `kyc_status: passed`, `agent_authorized: true`,
-`mandate_cap: N` — without revealing the underlying identity.
+is that an external data source genuinely contains specific states —
+without revealing the underlying identity.
 
-In short: **Primus attests that the data is real; AllScale's systems are
-what produce the KYC and authorization states.**
+Gate 2 is **two attestations, one gate**: the paying agent presents Primus
+zkTLS attestations proving two independent claims about its principal,
+without revealing who the principal is:
+
+1. **Identity** — the principal has passed KYC at a regulated institution
+   (bring-your-own-KYC; the institution's system is the attested data
+   source).
+2. **Authorization** — the principal's own system of record (e.g. its
+   procurement or agent-management platform) contains a live mandate
+   authorizing this agent for this payment, with a cap covering the amount.
+
+In short: **Primus attests that the data is real; the regulated institution
+and the principal's own systems are what produce the KYC and authorization
+states. AllScale's gateway acts as the verifier of both attestations.**
 
 It is **not** private payment execution, and it does **not** enforce
 spending limits — the on-chain settlement contract does.
 
-### Key prerequisite: an attestable AllScale data source
+### Key prerequisite: attestable external data sources
 
-This requires an AllScale-controlled web/API surface exposing the relevant
-KYC and mandate fields in a stable, attestable format. Gate 2 only works if
-there is a concrete, stable endpoint whose fields Primus can attest over —
-"which API, which fields" must be answerable. Defining and maintaining that
-surface is part of the integration work, not a given.
+Gate 2 depends on the two external data sources — the regulated
+institution's KYC interface (identity) and the principal's own mandate
+system (authorization) — being coverable by zkTLS attestation: concrete,
+stable surfaces whose fields Primus can attest over ("which interface,
+which fields" must be answerable). AllScale does not need to — and should
+not — control these data sources. That is precisely what makes the
+verification meaningful to merchants: the attested data lives in systems
+AllScale does not control and cannot forge, so the "attesting to your own
+claims" problem does not arise.
 
 ### What changes
 
-`primusKycGate()` becomes verification of a zkTLS attestation supplied with
+`primusKycGate()` becomes verification of zkTLS attestations supplied with
 the checkout, instead of a heuristic.
 
 ### Attestation flow
 
+Both attestations are obtained by the agent side, presented at payment
+time, and verified by AllScale's gateway, fail-closed.
+
+**Identity attestation — data source: a regulated institution**
+
 ```
-1. Agent's principal completes AllScale KYC (existing AllScale capability).
+1. The agent's principal completes KYC at a regulated institution
+   (bring-your-own-KYC; independent of AllScale).
 2. At payment time, the agent (or its wallet infrastructure) obtains a
-   Primus zkTLS attestation over the AllScale KYC/mandate data source:
-      attested fields: kyc_status = passed,
-                       agent_authorized = true,
-                       mandate_cap ≥ checkout amount
-      disclosed: the attested claims only — not the entity's identity.
-3. The attestation is attached to the checkout request.
-4. Gate 2 verifies the attestation (Primus verifier / SDK):
-      valid + claims cover this checkout   → passed = true
-      invalid, expired, or claims too narrow → passed = false (fail-closed)
+   Primus zkTLS attestation over the institution's KYC records:
+      attested claim: kyc_status = passed (at the regulated institution)
+      disclosed: the claim only — not the principal's identity.
+```
+
+**Mandate attestation — data source: the principal's own system of record**
+
+```
+3. The agent also obtains a Primus zkTLS attestation over the principal's
+   own system of record (e.g. its procurement or agent-management
+   platform):
+      attested claims: a live mandate authorizes this agent for this
+                       payment, with mandate_cap ≥ checkout amount
+      disclosed: the claims only — not the principal's identity.
+4. Both attestations are attached to the checkout request.
+5. Gate 2 verifies both attestations (Primus verifier / SDK):
+      both valid + claims cover this checkout → passed = true
+      either missing, invalid, expired, or too narrow → passed = false
+      (fail-closed)
 ```
 
 ### Response mapping
 
 | Verification outcome | `GateResult.passed` | `reason` |
 |----------------------|--------------------|----------|
-| Valid attestation covering this checkout | `true` | "Attested: payer backed by a KYC-passed entity, payment within authorized mandate" |
-| Missing / invalid / expired attestation | `false` | "Could not attest payer authorization from AllScale data source" |
+| Both attestations valid and covering this checkout | `true` | "Attested: principal KYC-verified at a regulated institution; live mandate covers this payment" |
+| Either attestation missing / invalid / expired | `false` | "Could not attest principal identity or payment mandate" |
 
 ### Mandate cap vs. spending limit — two different controls
 
@@ -156,7 +187,7 @@ These are deliberately separate and must not be conflated:
 
 | Control | Question it answers | Where it is decided |
 |---------|--------------------|--------------------|
-| Mandate cap (Gate 2, off-chain attestation) | "Is this single payment within what the principal authorized this agent to do?" | Primus attestation over AllScale's mandate data |
+| Mandate cap (Gate 2, off-chain attestation) | "Is this single payment within what the principal authorized this agent to do?" | Primus attestation over the principal's own mandate system of record |
 | Spending limit (on-chain) | "Has this agent's cumulative spend exceeded its on-chain limit?" | `SettlementGateway.sol`, per-agent accumulation |
 
 A payment must satisfy both: an attested per-payment mandate off-chain, and
@@ -164,11 +195,14 @@ the cumulative on-chain limit at settlement time.
 
 ### Prerequisites
 
-- An attestable AllScale KYC/mandate data surface (see above).
-- Primus verifier SDK integration in the gateway backend.
-- An attestation issuance path for agents (agent-side tooling) — the larger
-  share of the work, and the reason this gate is roadmap rather than
-  hackathon scope.
+- Attestation coverage of the two external data sources: the regulated
+  institution's KYC interface and the principal's own mandate system (see
+  above). Neither is controlled by AllScale.
+- Primus verifier SDK integration in the gateway backend (AllScale as
+  verifier of both attestations).
+- An attestation acquisition path for agents (agent-side tooling to obtain
+  both attestations at payment time) — the larger share of the work, and
+  the reason this gate is roadmap rather than hackathon scope.
 
 ### Contract impact
 
@@ -197,8 +231,8 @@ tooling), then Gate 2.
 ## 5. Out of scope for this MVP
 
 - Private on-chain transfers (this is not a privacy-payment system)
-- On-chain KYC verification (KYC states live in AllScale's systems, not on
-  chain)
+- On-chain KYC verification (KYC states live in the regulated institution's
+  systems — not in AllScale's, and not on chain)
 - Primus-based spending-limit enforcement (limits are on-chain, in the
   settlement contract)
 - Fully automated manual-review workflow for held payments
@@ -208,8 +242,8 @@ tooling), then Gate 2.
 
 The hard part is not replacing the function body — the interfaces are
 designed so that swap is mechanical. The hard part is productionizing
-everything around it: the attestable data sources, credentials and access
-control, the attestation issuance flow for agents, retry behavior,
+everything around it: the attestable external data sources, credentials and access
+control, the attestation acquisition flow for agents, retry behavior,
 the manual-review queue for held payments, and the operational compliance
 workflow. That work is why both gates ship as mocks in this demo and as
 design here.

@@ -25,7 +25,7 @@ KYT / KYC providers are still **not live**. Gate 1 and Gate 2 remain mock/demo c
 | Receipt verification | implemented by matching `CheckoutSettled` event fields |
 | HashKey testnet deploy script | implemented; requires RPC, deployer key, signer key, and gas |
 | Gate 1 KYT / AML | mock only; live integration under validation |
-| Gate 2 Primus zkTLS KYC / Authorization | mock/roadmap |
+| Gate 2 Primus zkTLS payer verification (principal identity + payment mandate) | mock/roadmap |
 
 ## Architecture
 
@@ -40,7 +40,7 @@ AGENT (ACP / AP2 / x402 / MPP)
   -> Demo order is created
 ```
 
-The spending limit is enforced by the on-chain settlement contract. Primus is not used for spending-limit decisions.
+Gate 2 (mock/roadmap) is payer verification via Primus zkTLS: the paying agent presents attestations proving two independent claims about its principal, without revealing who the principal is — (1) identity: the principal has passed KYC at a regulated institution (bring-your-own-KYC; the institution's system is the attested data source); (2) authorization: the principal's own system of record contains a live mandate authorizing this agent for this payment, with a cap covering the amount. AllScale's gateway acts as the verifier of both attestations; the attested data lives in systems AllScale does not control and cannot forge. The spending limit is enforced by the on-chain settlement contract. Primus is not used for spending-limit decisions.
 
 ## Local MVP Run
 

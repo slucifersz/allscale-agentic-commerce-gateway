@@ -7,7 +7,8 @@
  * and verifies the CheckoutSettled receipt.
  *
  * Flow: AGENT (x402/ACP/AP2/MPP) → ROUTER (canonical checkout)
- *       → VERIFICATION (Gate 1 KYT/AML, Gate 2 KYC/Authorization)
+ *       → VERIFICATION (Gate 1 KYT/AML, Gate 2 payer verification:
+ *         principal identity + payment mandate attestations)
  *       → SETTLE (handled by server/demo-api.js + SettlementGateway) / BLOCK
  *
  * Verification logic shown here is a demonstration. Live KYT / KYC
@@ -43,7 +44,8 @@ export function routeAgentPayment(
     };
   }
 
-  // 3. Gate 2 — KYC / Authorization payer credibility (MOCK, Primus zkTLS).
+  // 3. Gate 2 — payer verification: principal identity + payment mandate
+  //    attestations (MOCK, Primus zkTLS; AllScale's gateway is the verifier).
   const gate2 = primusKycGate(checkout);
   if (!gate2.passed) {
     return {

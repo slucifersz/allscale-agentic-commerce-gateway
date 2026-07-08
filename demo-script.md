@@ -75,7 +75,7 @@ Say:
 | ERC-20 transfer | real contract call using `mUSDC` / `mUSDT` mock token for MVP |
 | Receipt verification | real event matching |
 | KYT / AML | mock / under validation |
-| Primus zkTLS | roadmap / not integrated |
+| Primus zkTLS payer verification (identity + mandate attestations) | roadmap / not integrated |
 
 ## Closing
 

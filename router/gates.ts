@@ -1,10 +1,10 @@
 /**
  * Verification gates — BOTH ARE MOCK HANDLERS.
  *
- * | Gate   | Check                                | Provider                        | Status               |
- * |--------|--------------------------------------|---------------------------------|----------------------|
- * | Gate 1 | KYT / AML fund-source screening      | AllScale (BlockSec KYT)         | mock (demonstration) |
- * | Gate 2 | KYC / Authorization payer credibility| Primus (zkTLS)                  | mock (roadmap)       |
+ * | Gate   | Check                                              | Provider                | Status               |
+ * |--------|----------------------------------------------------|--------------------------|----------------------|
+ * | Gate 1 | KYT / AML fund-source screening                    | AllScale (BlockSec KYT)  | mock (demonstration) |
+ * | Gate 2 | Payer verification: principal identity + mandate   | Primus (zkTLS)           | mock (roadmap)       |
  *
  * Provider names describe architectural intent only — neither integration
  * is live. Verification logic shown here is a demonstration. Live KYT / KYC
@@ -33,14 +33,27 @@ export function allScaleKytGate(checkout: CanonicalCheckout): GateResult {
   };
 }
 
-// MOCK — provider: Primus zkTLS KYC. Roadmap, not yet integrated.
+// MOCK — provider: Primus zkTLS payer verification. Roadmap, not yet integrated.
 //
 // Precise framing (do not change): Primus zkTLS provides data authenticity
-// with selective disclosure — it proves the payer is backed by an entity
-// that passed AllScale KYC and is within its authorized limit, WITHOUT
-// revealing who that entity is. It is NOT private payment execution, and
-// it does NOT enforce the spending limit — the on-chain settlement
-// contract does (contracts/SettlementGateway.sol).
+// with selective disclosure — it proves that an external data source
+// genuinely contains specific states; it does not produce KYC or
+// authorization conclusions itself. Gate 2 verifies TWO attestations, one
+// gate — two independent claims about the paying agent's principal, WITHOUT
+// revealing who the principal is:
+//   (1) Identity — the principal has passed KYC at a regulated institution
+//       (bring-your-own-KYC; the institution's system is the attested data
+//       source);
+//   (2) Authorization — the principal's own system of record (e.g. its
+//       procurement or agent-management platform) contains a live mandate
+//       authorizing this agent for this payment, with a cap covering the
+//       amount.
+// AllScale's gateway acts as the VERIFIER of both attestations, not the
+// attested data source — the attested data lives in systems AllScale does
+// not control and cannot forge, which is precisely what makes the
+// verification meaningful to merchants. It is NOT private payment
+// execution, and it does NOT enforce the spending limit — the on-chain
+// settlement contract does (contracts/SettlementGateway.sol).
 export function primusKycGate(checkout: CanonicalCheckout): GateResult {
   const flagged = checkout.agent.toLowerCase().includes(SUSPICIOUS_MARKER);
   return {
@@ -48,8 +61,8 @@ export function primusKycGate(checkout: CanonicalCheckout): GateResult {
     provider: "Primus (zkTLS)",
     passed: !flagged,
     reason: flagged
-      ? "Could not attest payer is backed by a KYC-verified entity (simulated)"
-      : "Payer attested as backed by a KYC-verified entity, within authorized limit (simulated)",
+      ? "Could not attest principal identity or payment mandate (simulated)"
+      : "Attested: principal KYC-verified at a regulated institution; live mandate covers this payment (simulated)",
     mock: true,
   };
 }
