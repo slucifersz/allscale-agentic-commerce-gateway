@@ -1,0 +1,10 @@
+{
+  "network": "HashKey Chain Testnet",
+  "chainId": 133,
+  "contractName": "SettlementGateway",
+  "contractAddress": "_TBD",
+  "deployTxHash": "_TBD",
+  "explorerBaseUrl": "_TBD",
+  "deployedAt": "_TBD",
+  "notes": "All _TBD values will be filled in manually after the settlement contract is actually deployed. Do NOT fabricate or auto-generate any of these values. chainId 133 is the only field known to be real at this stage."
+}

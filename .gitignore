@@ -1,0 +1,35 @@
+# Environment / secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+id_rsa*
+*.mnemonic
+secrets.json
+credentials.json
+serviceAccount*.json
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+out/
+artifacts/
+cache/
+typechain-types/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log
+npm-debug.log*

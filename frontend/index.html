@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AllScale Agentic Commerce Gateway — Demo</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --border: #30363d;
+    --text: #e6edf3; --muted: #8b949e;
+    --green: #3fb950; --red: #f85149; --amber: #d29922; --blue: #58a6ff;
+    font-size: 15px;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55; padding: 2rem 1rem 4rem; max-width: 880px; margin: 0 auto;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: .25rem; }
+  .subtitle { color: var(--muted); margin-bottom: 1.25rem; }
+  .disclaimer {
+    border: 1px solid var(--amber); background: rgba(210,153,34,.08);
+    color: var(--amber); border-radius: 8px; padding: .75rem 1rem;
+    font-weight: 600; margin-bottom: 1.5rem;
+  }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.1rem 1.25rem; margin-bottom: 1.25rem;
+  }
+  .panel h2 { font-size: 1.05rem; margin-bottom: .75rem; }
+  table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  th, td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; }
+  .tag { display: inline-block; padding: .1rem .5rem; border-radius: 999px; font-size: .75rem; font-weight: 700; }
+  .tag.mock { background: rgba(210,153,34,.15); color: var(--amber); border: 1px solid var(--amber); }
+  .tag.tbd  { background: rgba(88,166,255,.12); color: var(--blue); border: 1px solid var(--blue); }
+  .buttons { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  button {
+    font: inherit; font-weight: 600; padding: .55rem 1.1rem; border-radius: 8px;
+    border: 1px solid var(--border); background: #21262d; color: var(--text); cursor: pointer;
+  }
+  button:hover { border-color: var(--blue); }
+  button.trusted { border-color: var(--green); }
+  button.suspicious { border-color: var(--red); }
+  .step {
+    display: flex; gap: .75rem; align-items: flex-start;
+    padding: .6rem .4rem; border-bottom: 1px dashed var(--border);
+    opacity: .35; transition: opacity .3s;
+  }
+  .step:last-child { border-bottom: none; }
+  .step.active { opacity: 1; }
+  .step .icon { width: 1.6rem; text-align: center; flex-shrink: 0; }
+  .step .label b { display: block; }
+  .step .detail { color: var(--muted); font-size: .85rem; }
+  .verdict { margin-top: .9rem; padding: .8rem 1rem; border-radius: 8px; font-weight: 700; display: none; }
+  .verdict.settled { display: block; background: rgba(63,185,80,.1); border: 1px solid var(--green); color: var(--green); }
+  .verdict.blocked { display: block; background: rgba(248,81,73,.1); border: 1px solid var(--red); color: var(--red); }
+  code { background: #21262d; padding: .1rem .35rem; border-radius: 4px; font-size: .85em; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85rem; }
+  footer { color: var(--muted); font-size: .8rem; margin-top: 2rem; }
+</style>
+</head>
+<body>
+
+<h1>AllScale Agentic Commerce Gateway</h1>
+<p class="subtitle">AI agent payments (x402 / ACP / AP2 / MPP) → canonical checkout → dual verification gates → settlement on HashKey Chain testnet (chainId 133)</p>
+
+<!-- Required disclaimer — do not remove or reword. -->
+<div class="disclaimer">Verification logic shown here is a demonstration. Live KYT / KYC integration is under validation.</div>
+
+<div class="panel">
+  <h2>Verification gates</h2>
+  <table>
+    <tr><th>Gate</th><th>Check</th><th>Provider</th><th>Status</th></tr>
+    <tr>
+      <td>Gate 1</td><td>KYT / AML fund-source screening</td>
+      <td>AllScale (BlockSec KYT)</td>
+      <td><span class="tag mock">mock (demonstration)</span></td>
+    </tr>
+    <tr>
+      <td>Gate 2</td><td>KYC / Authorization payer credibility</td>
+      <td>Primus (zkTLS)</td>
+      <td><span class="tag mock">mock (roadmap)</span></td>
+    </tr>
+  </table>
+  <p class="detail" style="color:var(--muted); font-size:.85rem; margin-top:.6rem;">
+    Provider names indicate architectural intent only — neither integration is live.
+    Primus zkTLS proves <em>data authenticity with selective disclosure</em> (the payer is backed by a
+    KYC-verified entity, within its authorized limit, without revealing who) — it is <em>not</em> private
+    payment execution. The spending limit is enforced by the on-chain settlement contract.
+  </p>
+</div>
+
+<div class="panel">
+  <h2>Run demo checkout <span class="tag mock">mock data</span></h2>
+  <div class="buttons">
+    <button class="trusted" onclick="runDemo('trusted')">▶ Trusted agent (settles)</button>
+    <button class="suspicious" onclick="runDemo('suspicious')">▶ Suspicious agent (blocked)</button>
+  </div>
+
+  <div id="pipeline">
+    <div class="step" id="step-agent">
+      <div class="icon">🤖</div>
+      <div class="label"><b>AGENT</b><div class="detail" id="agent-detail">Waiting…</div></div>
+    </div>
+    <div class="step" id="step-router">
+      <div class="icon">🔀</div>
+      <div class="label"><b>ROUTER — canonical checkout</b><div class="detail mono" id="router-detail">Waiting…</div></div>
+    </div>
+    <div class="step" id="step-gate1">
+      <div class="icon" id="gate1-icon">⏳</div>
+      <div class="label"><b>Gate 1 — KYT / AML · AllScale (BlockSec KYT) · <span class="tag mock">mock</span></b>
+        <div class="detail" id="gate1-detail">Waiting…</div></div>
+    </div>
+    <div class="step" id="step-gate2">
+      <div class="icon" id="gate2-icon">⏳</div>
+      <div class="label"><b>Gate 2 — KYC / Authorization · Primus (zkTLS) · <span class="tag mock">mock</span></b>
+        <div class="detail" id="gate2-detail">Waiting…</div></div>
+    </div>
+    <div class="step" id="step-settle">
+      <div class="icon">⛓️</div>
+      <div class="label"><b>SETTLE — HashKey Chain testnet (chainId 133)</b>
+        <div class="detail" id="settle-detail">Waiting…</div></div>
+    </div>
+  </div>
+
+  <div class="verdict settled" id="verdict-settled">
+    ✅ SETTLED — both gates passed; amount within on-chain spending limit.
+    <div class="mono" style="font-weight:400; margin-top:.4rem;">
+      <!-- PLACEHOLDER: replace _TBD below with the REAL settlement tx hash once available. -->
+      tx: <span id="tx-hash">_TBD</span>
+      &nbsp;·&nbsp;
+      <!-- PLACEHOLDER: replace href with `${explorerBaseUrl}/tx/${txHash}` once real values exist. -->
+      <a id="explorer-link" href="#" style="color:var(--blue);">View on explorer (_TBD)</a>
+    </div>
+  </div>
+  <div class="verdict blocked" id="verdict-blocked">
+    ⛔ BLOCKED before settlement — <span id="blocked-by"></span> failed. No funds moved.
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Settlement contract</h2>
+  <table class="mono">
+    <tr><th>chainId</th><td>133 (HashKey Chain testnet)</td></tr>
+    <!-- PLACEHOLDER: fill from deployments/hashkey-testnet.json after real deployment. -->
+    <tr><th>contractAddress</th><td>_TBD <span class="tag tbd">pending deployment</span></td></tr>
+    <tr><th>deployTxHash</th><td>_TBD <span class="tag tbd">pending deployment</span></td></tr>
+    <tr><th>explorerBaseUrl</th><td>_TBD <span class="tag tbd">pending deployment</span></td></tr>
+  </table>
+</div>
+
+<footer>
+  Demo for HashKey Chain On-Chain Horizon hackathon. All checkout data on this page is mock.
+  Verification logic shown here is a demonstration. Live KYT / KYC integration is under validation.
+</footer>
+
+<script>
+// All demo data below is MOCK. Real tx hash + explorer link slots are the
+// _TBD placeholders above — replace manually once the settlement contract
+// is actually deployed on HashKey Chain testnet (chainId 133).
+const SCENARIOS = {
+  trusted: {
+    agent: "agent-0xA11ce…trusted (protocol: x402)",
+    checkout: "chk_x402_a11ce · token: MOCK-USDC · amount: 25.00 · treasury: 0xTreasury…mock · expiry: +15m",
+    gate1: { pass: true,  detail: "No adverse fund-source signals (simulated)" },
+    gate2: { pass: true,  detail: "Payer attested as backed by a KYC-verified entity, within authorized limit (simulated)" },
+    settle: "settle() within on-chain spending limit → tx hash _TBD (real tx pending contract deployment)"
+  },
+  suspicious: {
+    agent: "agent-0xBad…suspicious (protocol: ACP)",
+    checkout: "chk_acp_bad001 · token: MOCK-USDC · amount: 25.00 · treasury: 0xTreasury…mock · expiry: +15m",
+    gate1: { pass: false, detail: "Fund source flagged by KYT/AML screening (simulated)" },
+    gate2: { pass: null,  detail: "Not evaluated — blocked at Gate 1" },
+    settle: "Never reached — checkout blocked before settlement"
+  }
+};
+
+function runDemo(kind) {
+  const s = SCENARIOS[kind];
+  document.querySelectorAll(".step").forEach(el => el.classList.remove("active"));
+  document.getElementById("verdict-settled").style.display = "none";
+  document.getElementById("verdict-blocked").style.display = "none";
+
+  const steps = [
+    () => { show("step-agent");  set("agent-detail", s.agent); },
+    () => { show("step-router"); set("router-detail", s.checkout); },
+    () => { show("step-gate1");  set("gate1-detail", s.gate1.detail);
+            set("gate1-icon", s.gate1.pass ? "✅" : "⛔"); },
+    () => { if (s.gate1.pass) { show("step-gate2"); set("gate2-detail", s.gate2.detail);
+              set("gate2-icon", s.gate2.pass ? "✅" : "⛔"); }
+            else { set("gate2-detail", s.gate2.detail); set("gate2-icon", "⏳"); } },
+    () => {
+      if (s.gate1.pass && s.gate2.pass) {
+        show("step-settle"); set("settle-detail", s.settle);
+        document.getElementById("verdict-settled").style.display = "block";
+      } else {
+        set("settle-detail", s.settle);
+        set("blocked-by", s.gate1.pass ? "Gate 2 (KYC / Authorization — Primus, mock)" : "Gate 1 (KYT / AML — AllScale, mock)");
+        document.getElementById("verdict-blocked").style.display = "block";
+      }
+    }
+  ];
+  steps.forEach((fn, i) => setTimeout(fn, i * 550));
+}
+
+function show(id) { document.getElementById(id).classList.add("active"); }
+function set(id, text) { document.getElementById(id).textContent = text; }
+</script>
+</body>
+</html>
