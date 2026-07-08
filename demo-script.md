@@ -1,60 +1,82 @@
-# Demo Script — AllScale Agentic Commerce Gateway
+# Demo Script - AllScale Agentic Commerce Gateway MVP
 
 > **Verification logic shown here is a demonstration. Live KYT / KYC integration is under validation.**
 
-Audience: HashKey Chain On-Chain Horizon hackathon judges. Length: ~3 minutes.
-All checkout data in the demo is **mock**; the only intended real on-chain component is the settlement contract on HashKey Chain testnet (chainId 133), whose address / tx are currently `_TBD`.
+Audience: HashKey Chain On-Chain Horizon hackathon judges. Length: 3-4 minutes.
 
 ## Setup
 
-1. Open `frontend/index.html` in a browser (no build step needed).
-2. Confirm the amber disclaimer banner is visible at the top — mention it up front: the two verification gates are mock handlers that demonstrate the architecture; provider names (AllScale/BlockSec, Primus) describe design intent, not live integrations.
+1. Start the MVP API and open the console:
 
-## Opening line (~20s)
+   ```bash
+   PORT=8791 npm run server
+   open http://127.0.0.1:8791
+   ```
 
-> "AI agents are starting to pay for things over protocols like x402, ACP, AP2 and MPP. Merchants can't accept those payments blindly — they need compliance checks *before* settlement. This gateway normalizes any agent protocol into one canonical checkout, runs two verification gates, and only then settles on HashKey Chain."
+2. Confirm the deployment panel shows:
+   - `MVP ready`
+   - chain ID
+   - settlement contract address
+   - token address
+   - demo agent
+   - merchant treasury
 
-Point at the **Verification gates** table on the page: Gate 1 = KYT/AML (AllScale, powered by BlockSec — mock, demonstration), Gate 2 = KYC/Authorization (Primus zkTLS — mock, roadmap).
+3. State the boundary clearly: KYT / KYC are not live; this MVP proves checkout signing, on-chain settlement, and receipt verification. The `mUSDC` / `mUSDT` contracts are HashKey testnet mock tokens deployed for the demo, not official stablecoins.
 
-## Path 1 — Trusted agent (~60s)
+## Opening
 
-**Click:** `▶ Trusted agent (settles)`
+> "AI agents can speak different commerce protocols: ACP, AP2, x402, and MPP. Merchants do not want four separate payment stacks. This gateway normalizes the request into one checkout, signs exact HashKey payment terms, settles through a contract, and verifies the receipt before creating the merchant order."
 
-What appears, step by step (all simulated):
+## Path - Complete Order
 
-1. **AGENT** — a trusted agent initiates a payment over x402.
-2. **ROUTER** — the request is normalized into a canonical checkout: checkout ID, token, amount, treasury, expiry, metadata hash. *Say: "whatever protocol the agent speaks, the merchant sees this one shape."*
-3. **Gate 1 ✅** — KYT/AML fund-source screening passes (mock).
-4. **Gate 2 ✅** — Primus zkTLS attestation passes (mock). *Say precisely: "Primus proves the payer is backed by a KYC-verified entity within its authorized limit — without revealing who that entity is. Data authenticity with selective disclosure, not private payment execution."*
-5. **SETTLE ✅** — settlement executes via the HashKey testnet contract, **within the spending limit enforced by the contract on-chain**.
+1. Choose a protocol, for example `ACP checkout session`.
+2. Choose `Agent Pass`.
+3. Choose `mUSDC` or `mUSDT`.
+4. Click `Generate`.
 
-Expected on screen: green **SETTLED** verdict with tx hash slot.
-⚠️ The tx hash and explorer link currently show `_TBD` — these are reserved placeholders for the real settlement transaction once the contract is deployed. Do not present them as live yet; say "this is where the real HashKey explorer link will go."
+Say:
 
-## Path 2 — Suspicious agent (~60s)
+> "The gateway has produced a canonical checkout and protocol-shaped payload. More importantly, it created exact payment terms: checkout ID, merchant ID, agent, token, amount, treasury, expiry, and metadata hash. Those terms are signed by the gateway."
 
-**Click:** `▶ Suspicious agent (blocked)`
+Point to:
 
-1. **AGENT** — a suspicious agent initiates a payment over ACP.
-2. **ROUTER** — same canonical checkout normalization.
-3. **Gate 1 ⛔** — KYT/AML screening flags the fund source (mock).
-4. **Gate 2** — never evaluated; pipeline short-circuits.
-5. **SETTLE** — never reached.
+- protocol payload JSON
+- payment instruction JSON
+- router / contract address
+- gateway signature
+- calldata
 
-Expected on screen: red **BLOCKED before settlement** verdict.
-*Say: "the checkout dies before it ever touches the chain — no funds move. That's the merchant-protection story."*
+4. Click `Complete`.
 
-## Closing (~30s)
+Say:
 
-- Recap the flow: AGENT → ROUTER → two gates → SETTLE / BLOCK.
-- Be explicit about status: gates are **mock** (Gate 1: live AllScale/BlockSec KYT integration under validation; Gate 2: Primus zkTLS on the roadmap). The **settlement contract on HashKey testnet is the real on-chain piece** — deployment info lands in `deployments/hashkey-testnet.json` and the frontend placeholders.
+> "For the MVP, the demo agent submits `SettlementGateway.pay()`. The contract checks the gateway signature, expiry, replay status, and the agent spending limit. Then it transfers ERC-20 funds directly from the agent to the merchant treasury."
 
-## Mock vs. real cheat sheet
+5. Wait for `Order completed and receipt verified`.
 
-| Element in demo | Mock or real? |
+Say:
+
+> "The API does not simply trust a tx hash. It reads the receipt, finds the `CheckoutSettled` event, and checks that checkout ID, merchant ID, agent, token, amount, treasury, and metadata hash all match the original checkout."
+
+6. Open the order link.
+
+Say:
+
+> "This is the order page backed by verified on-chain payment evidence."
+
+## Mock vs Real
+
+| Element | Status |
 |---|---|
-| Agent identities, checkout data, amounts | Mock |
-| Gate 1 KYT/AML result | Mock (demonstration) |
-| Gate 2 Primus zkTLS result | Mock (roadmap) |
-| Settlement tx hash / explorer link | `_TBD` placeholder — real values added after deployment |
-| chainId 133 (HashKey Chain testnet) | Real target network |
+| Protocol payloads | demo implementations |
+| Catalog and orders | in-memory demo state |
+| Gateway signature | real EIP-712 signature |
+| Settlement contract | real local/testnet contract |
+| ERC-20 transfer | real contract call using `mUSDC` / `mUSDT` mock token for MVP |
+| Receipt verification | real event matching |
+| KYT / AML | mock / under validation |
+| Primus zkTLS | roadmap / not integrated |
+
+## Closing
+
+> "The MVP turns the original front-end-only demo into a runnable payment loop. The remaining product work is live KYT/KYC, real merchant persistence, production token configuration, and production wallet UX."

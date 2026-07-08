@@ -1,12 +1,14 @@
 /**
- * Router — normalizes multi-protocol agent payments into a canonical
- * checkout, runs the two verification gates, and either settles through
- * the HashKey Chain testnet settlement contract or blocks the checkout
- * before settlement.
+ * Legacy mock router — normalizes multi-protocol agent payments into a
+ * canonical checkout and demonstrates where verification gates sit.
+ *
+ * The runnable MVP path now lives in server/demo-api.js, which generates
+ * signed payment terms, submits/accepts a SettlementGateway transaction,
+ * and verifies the CheckoutSettled receipt.
  *
  * Flow: AGENT (x402/ACP/AP2/MPP) → ROUTER (canonical checkout)
  *       → VERIFICATION (Gate 1 KYT/AML, Gate 2 KYC/Authorization)
- *       → SETTLE (HashKey, within on-chain spending limit) / BLOCK
+ *       → SETTLE (handled by server/demo-api.js + SettlementGateway) / BLOCK
  *
  * Verification logic shown here is a demonstration. Live KYT / KYC
  * integration is under validation.
@@ -16,9 +18,9 @@ import { adapters, type RawAgentPaymentRequest } from "./protocols";
 import { allScaleKytGate, primusKycGate } from "./gates";
 import type { CheckoutOutcome } from "./types";
 
-/** Deployment record for the settlement contract — all _TBD except chainId. */
+/** Default settlement target. Runtime API reads deployments/*.json instead. */
 export const SETTLEMENT = {
-  chainId: 133, // HashKey Chain testnet — the only real value at this stage
+  chainId: 133, // HashKey Chain testnet target
   contractAddress: "_TBD",
   deployTxHash: "_TBD",
   explorerBaseUrl: "_TBD",
@@ -52,11 +54,8 @@ export function routeAgentPayment(
     };
   }
 
-  // 4. Both gates passed → settle via the HashKey testnet settlement
-  //    contract. The spending limit is enforced ON-CHAIN by that contract
-  //    (contracts/SettlementGateway.sol), not by any off-chain verifier.
-  //    No real transaction is sent here: the contract is not deployed yet,
-  //    so the tx hash stays _TBD until real on-chain info is provided.
+  // 4. This legacy helper stops at the mocked outcome. The runnable MVP
+  //    settlement path is server/demo-api.js -> contracts/SettlementGateway.sol.
   return {
     status: "SETTLED",
     checkout,

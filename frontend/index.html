@@ -1,212 +1,517 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AllScale Agentic Commerce Gateway — Demo</title>
-<style>
-  :root {
-    --bg: #0d1117; --panel: #161b22; --border: #30363d;
-    --text: #e6edf3; --muted: #8b949e;
-    --green: #3fb950; --red: #f85149; --amber: #d29922; --blue: #58a6ff;
-    font-size: 15px;
-  }
-  * { box-sizing: border-box; margin: 0; }
-  body {
-    background: var(--bg); color: var(--text);
-    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    line-height: 1.55; padding: 2rem 1rem 4rem; max-width: 880px; margin: 0 auto;
-  }
-  h1 { font-size: 1.5rem; margin-bottom: .25rem; }
-  .subtitle { color: var(--muted); margin-bottom: 1.25rem; }
-  .disclaimer {
-    border: 1px solid var(--amber); background: rgba(210,153,34,.08);
-    color: var(--amber); border-radius: 8px; padding: .75rem 1rem;
-    font-weight: 600; margin-bottom: 1.5rem;
-  }
-  .panel {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 10px; padding: 1.1rem 1.25rem; margin-bottom: 1.25rem;
-  }
-  .panel h2 { font-size: 1.05rem; margin-bottom: .75rem; }
-  table { width: 100%; border-collapse: collapse; font-size: .9rem; }
-  th, td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid var(--border); }
-  th { color: var(--muted); font-weight: 600; }
-  .tag { display: inline-block; padding: .1rem .5rem; border-radius: 999px; font-size: .75rem; font-weight: 700; }
-  .tag.mock { background: rgba(210,153,34,.15); color: var(--amber); border: 1px solid var(--amber); }
-  .tag.tbd  { background: rgba(88,166,255,.12); color: var(--blue); border: 1px solid var(--blue); }
-  .buttons { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1rem; }
-  button {
-    font: inherit; font-weight: 600; padding: .55rem 1.1rem; border-radius: 8px;
-    border: 1px solid var(--border); background: #21262d; color: var(--text); cursor: pointer;
-  }
-  button:hover { border-color: var(--blue); }
-  button.trusted { border-color: var(--green); }
-  button.suspicious { border-color: var(--red); }
-  .step {
-    display: flex; gap: .75rem; align-items: flex-start;
-    padding: .6rem .4rem; border-bottom: 1px dashed var(--border);
-    opacity: .35; transition: opacity .3s;
-  }
-  .step:last-child { border-bottom: none; }
-  .step.active { opacity: 1; }
-  .step .icon { width: 1.6rem; text-align: center; flex-shrink: 0; }
-  .step .label b { display: block; }
-  .step .detail { color: var(--muted); font-size: .85rem; }
-  .verdict { margin-top: .9rem; padding: .8rem 1rem; border-radius: 8px; font-weight: 700; display: none; }
-  .verdict.settled { display: block; background: rgba(63,185,80,.1); border: 1px solid var(--green); color: var(--green); }
-  .verdict.blocked { display: block; background: rgba(248,81,73,.1); border: 1px solid var(--red); color: var(--red); }
-  code { background: #21262d; padding: .1rem .35rem; border-radius: 4px; font-size: .85em; }
-  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85rem; }
-  footer { color: var(--muted); font-size: .8rem; margin-top: 2rem; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AllScale Agentic Commerce Gateway - MVP</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0f14;
+      --surface: #111820;
+      --surface-2: #16212c;
+      --line: #2b3948;
+      --text: #eef5ff;
+      --muted: #9fb0c2;
+      --green: #6ee7a8;
+      --blue: #88bfff;
+      --amber: #ffd37a;
+      --red: #ff8a8a;
+      --violet: #c8b6ff;
+      font-size: 15px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+    button, input, select {
+      font: inherit;
+    }
+    a { color: var(--blue); }
+    .app {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 24px 18px 40px;
+    }
+    header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 17px;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      color: var(--muted);
+      letter-spacing: 0;
+    }
+    p { margin: 0; }
+    .subtle { color: var(--muted); }
+    .badgeRow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      background: rgba(255, 255, 255, .03);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .badge.ok { color: var(--green); border-color: rgba(110, 231, 168, .4); }
+    .badge.warn { color: var(--amber); border-color: rgba(255, 211, 122, .45); }
+    .notice {
+      border: 1px solid rgba(255, 211, 122, .5);
+      background: rgba(255, 211, 122, .08);
+      color: var(--amber);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      font-weight: 700;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .panel {
+      border: 1px solid var(--line);
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .panel + .panel { margin-top: 14px; }
+    label {
+      display: block;
+      margin: 12px 0 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    select, input {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0c1219;
+      color: var(--text);
+      padding: 0 12px;
+    }
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    button {
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-2);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 800;
+    }
+    button.primary {
+      background: var(--green);
+      color: #05120b;
+      border-color: var(--green);
+    }
+    button:disabled {
+      cursor: not-allowed;
+      opacity: .55;
+    }
+    .status {
+      min-height: 22px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .metric {
+      border: 1px solid rgba(255,255,255,.08);
+      background: #0c1219;
+      border-radius: 8px;
+      padding: 12px;
+      min-height: 92px;
+    }
+    .metric strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .metric span {
+      display: block;
+      word-break: break-word;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+    }
+    .journey {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .step {
+      border: 1px solid rgba(255,255,255,.08);
+      background: #0c1219;
+      border-radius: 8px;
+      padding: 12px;
+      min-height: 126px;
+    }
+    .step.active {
+      border-color: rgba(110, 231, 168, .55);
+      background: rgba(110, 231, 168, .08);
+    }
+    .step.done {
+      border-color: rgba(136, 191, 255, .45);
+      background: rgba(136, 191, 255, .07);
+    }
+    .step strong {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 7px;
+    }
+    .step span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 14px;
+      margin-top: 14px;
+    }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 520px;
+      overflow: auto;
+      background: #070b10;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 8px;
+      padding: 14px;
+      color: #dce9ff;
+      font-size: 12px;
+    }
+    .kv {
+      display: grid;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .kv div {
+      display: grid;
+      grid-template-columns: 118px minmax(0, 1fr);
+      gap: 8px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      padding-bottom: 8px;
+    }
+    .kv strong { color: var(--muted); }
+    .kv span {
+      word-break: break-word;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+    }
+    @media (max-width: 980px) {
+      header, .layout, .split { grid-template-columns: 1fr; display: grid; }
+      .badgeRow { justify-content: flex-start; }
+      .grid { grid-template-columns: 1fr 1fr; }
+      .journey { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 560px) {
+      .grid, .journey, .buttons { grid-template-columns: 1fr; }
+      .app { padding: 18px 12px 30px; }
+    }
+  </style>
 </head>
 <body>
+  <main class="app">
+    <header>
+      <div>
+        <h1>AllScale Agentic Commerce Gateway</h1>
+        <p class="subtle">MVP console: protocol checkout, signed payment instruction, on-chain settlement, receipt verification.</p>
+      </div>
+      <div class="badgeRow">
+        <span class="badge" id="readyBadge">Loading</span>
+        <span class="badge" id="chainBadge">chain -</span>
+        <span class="badge warn" id="tokenBadge">token -</span>
+      </div>
+    </header>
 
-<h1>AllScale Agentic Commerce Gateway</h1>
-<p class="subtitle">AI agent payments (x402 / ACP / AP2 / MPP) → canonical checkout → dual verification gates → settlement on HashKey Chain testnet (chainId 133)</p>
-
-<!-- Required disclaimer — do not remove or reword. -->
-<div class="disclaimer">Verification logic shown here is a demonstration. Live KYT / KYC integration is under validation.</div>
-
-<div class="panel">
-  <h2>Verification gates</h2>
-  <table>
-    <tr><th>Gate</th><th>Check</th><th>Provider</th><th>Status</th></tr>
-    <tr>
-      <td>Gate 1</td><td>KYT / AML fund-source screening</td>
-      <td>AllScale (BlockSec KYT)</td>
-      <td><span class="tag mock">mock (demonstration)</span></td>
-    </tr>
-    <tr>
-      <td>Gate 2</td><td>KYC / Authorization payer credibility</td>
-      <td>Primus (zkTLS)</td>
-      <td><span class="tag mock">mock (roadmap)</span></td>
-    </tr>
-  </table>
-  <p class="detail" style="color:var(--muted); font-size:.85rem; margin-top:.6rem;">
-    Provider names indicate architectural intent only — neither integration is live.
-    Primus zkTLS proves <em>data authenticity with selective disclosure</em> (the payer is backed by a
-    KYC-verified entity, within its authorized limit, without revealing who) — it is <em>not</em> private
-    payment execution. The spending limit is enforced by the on-chain settlement contract.
-  </p>
-</div>
-
-<div class="panel">
-  <h2>Run demo checkout <span class="tag mock">mock data</span></h2>
-  <div class="buttons">
-    <button class="trusted" onclick="runDemo('trusted')">▶ Trusted agent (settles)</button>
-    <button class="suspicious" onclick="runDemo('suspicious')">▶ Suspicious agent (blocked)</button>
-  </div>
-
-  <div id="pipeline">
-    <div class="step" id="step-agent">
-      <div class="icon">🤖</div>
-      <div class="label"><b>AGENT</b><div class="detail" id="agent-detail">Waiting…</div></div>
+    <div class="notice">
+      Verification logic shown here is a demonstration. Live KYT / KYC integration is under validation.
     </div>
-    <div class="step" id="step-router">
-      <div class="icon">🔀</div>
-      <div class="label"><b>ROUTER — canonical checkout</b><div class="detail mono" id="router-detail">Waiting…</div></div>
-    </div>
-    <div class="step" id="step-gate1">
-      <div class="icon" id="gate1-icon">⏳</div>
-      <div class="label"><b>Gate 1 — KYT / AML · AllScale (BlockSec KYT) · <span class="tag mock">mock</span></b>
-        <div class="detail" id="gate1-detail">Waiting…</div></div>
-    </div>
-    <div class="step" id="step-gate2">
-      <div class="icon" id="gate2-icon">⏳</div>
-      <div class="label"><b>Gate 2 — KYC / Authorization · Primus (zkTLS) · <span class="tag mock">mock</span></b>
-        <div class="detail" id="gate2-detail">Waiting…</div></div>
-    </div>
-    <div class="step" id="step-settle">
-      <div class="icon">⛓️</div>
-      <div class="label"><b>SETTLE — HashKey Chain testnet (chainId 133)</b>
-        <div class="detail" id="settle-detail">Waiting…</div></div>
-    </div>
-  </div>
 
-  <div class="verdict settled" id="verdict-settled">
-    ✅ SETTLED — both gates passed; amount within on-chain spending limit.
-    <div class="mono" style="font-weight:400; margin-top:.4rem;">
-      <!-- PLACEHOLDER: replace _TBD below with the REAL settlement tx hash once available. -->
-      tx: <span id="tx-hash">_TBD</span>
-      &nbsp;·&nbsp;
-      <!-- PLACEHOLDER: replace href with `${explorerBaseUrl}/tx/${txHash}` once real values exist. -->
-      <a id="explorer-link" href="#" style="color:var(--blue);">View on explorer (_TBD)</a>
-    </div>
-  </div>
-  <div class="verdict blocked" id="verdict-blocked">
-    ⛔ BLOCKED before settlement — <span id="blocked-by"></span> failed. No funds moved.
-  </div>
-</div>
+    <section class="layout">
+      <div>
+        <div class="panel">
+          <h2>Generate Checkout</h2>
+          <label for="protocol">Protocol</label>
+          <select id="protocol">
+            <option value="acp">ACP checkout session</option>
+            <option value="ap2">AP2 mandate bundle</option>
+            <option value="x402">x402 paid resource</option>
+            <option value="mpp">MPP payment challenge</option>
+          </select>
 
-<div class="panel">
-  <h2>Settlement contract</h2>
-  <table class="mono">
-    <tr><th>chainId</th><td>133 (HashKey Chain testnet)</td></tr>
-    <!-- PLACEHOLDER: fill from deployments/hashkey-testnet.json after real deployment. -->
-    <tr><th>contractAddress</th><td>_TBD <span class="tag tbd">pending deployment</span></td></tr>
-    <tr><th>deployTxHash</th><td>_TBD <span class="tag tbd">pending deployment</span></td></tr>
-    <tr><th>explorerBaseUrl</th><td>_TBD <span class="tag tbd">pending deployment</span></td></tr>
-  </table>
-</div>
+          <label for="product">Product</label>
+          <select id="product"></select>
 
-<footer>
-  Demo for HashKey Chain On-Chain Horizon hackathon. All checkout data on this page is mock.
-  Verification logic shown here is a demonstration. Live KYT / KYC integration is under validation.
-</footer>
+          <label for="token">Stablecoin route</label>
+          <select id="token"></select>
 
-<script>
-// All demo data below is MOCK. Real tx hash + explorer link slots are the
-// _TBD placeholders above — replace manually once the settlement contract
-// is actually deployed on HashKey Chain testnet (chainId 133).
-const SCENARIOS = {
-  trusted: {
-    agent: "agent-0xA11ce…trusted (protocol: x402)",
-    checkout: "chk_x402_a11ce · token: MOCK-USDC · amount: 25.00 · treasury: 0xTreasury…mock · expiry: +15m",
-    gate1: { pass: true,  detail: "No adverse fund-source signals (simulated)" },
-    gate2: { pass: true,  detail: "Payer attested as backed by a KYC-verified entity, within authorized limit (simulated)" },
-    settle: "settle() within on-chain spending limit → tx hash _TBD (real tx pending contract deployment)"
-  },
-  suspicious: {
-    agent: "agent-0xBad…suspicious (protocol: ACP)",
-    checkout: "chk_acp_bad001 · token: MOCK-USDC · amount: 25.00 · treasury: 0xTreasury…mock · expiry: +15m",
-    gate1: { pass: false, detail: "Fund source flagged by KYT/AML screening (simulated)" },
-    gate2: { pass: null,  detail: "Not evaluated — blocked at Gate 1" },
-    settle: "Never reached — checkout blocked before settlement"
-  }
-};
+          <label for="amount">Amount, USD cents</label>
+          <input id="amount" inputmode="numeric" value="4900" />
 
-function runDemo(kind) {
-  const s = SCENARIOS[kind];
-  document.querySelectorAll(".step").forEach(el => el.classList.remove("active"));
-  document.getElementById("verdict-settled").style.display = "none";
-  document.getElementById("verdict-blocked").style.display = "none";
+          <label for="txHash">External tx hash, optional</label>
+          <input id="txHash" placeholder="Leave empty to let demo agent submit payment" />
 
-  const steps = [
-    () => { show("step-agent");  set("agent-detail", s.agent); },
-    () => { show("step-router"); set("router-detail", s.checkout); },
-    () => { show("step-gate1");  set("gate1-detail", s.gate1.detail);
-            set("gate1-icon", s.gate1.pass ? "✅" : "⛔"); },
-    () => { if (s.gate1.pass) { show("step-gate2"); set("gate2-detail", s.gate2.detail);
-              set("gate2-icon", s.gate2.pass ? "✅" : "⛔"); }
-            else { set("gate2-detail", s.gate2.detail); set("gate2-icon", "⏳"); } },
-    () => {
-      if (s.gate1.pass && s.gate2.pass) {
-        show("step-settle"); set("settle-detail", s.settle);
-        document.getElementById("verdict-settled").style.display = "block";
-      } else {
-        set("settle-detail", s.settle);
-        set("blocked-by", s.gate1.pass ? "Gate 2 (KYC / Authorization — Primus, mock)" : "Gate 1 (KYT / AML — AllScale, mock)");
-        document.getElementById("verdict-blocked").style.display = "block";
+          <div class="buttons">
+            <button class="primary" id="startBtn">Generate</button>
+            <button id="completeBtn" disabled>Complete</button>
+          </div>
+          <div class="status" id="status">Starting...</div>
+        </div>
+
+        <div class="panel">
+          <h2>Deployment</h2>
+          <div class="kv" id="configBox"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <h2>MVP Flow</h2>
+          <div class="grid">
+            <div class="metric"><strong>Checkout</strong><span id="checkoutMetric">No checkout yet.</span></div>
+            <div class="metric"><strong>Router</strong><span id="routerMetric">No contract loaded.</span></div>
+            <div class="metric"><strong>Signature</strong><span id="signatureMetric">Waiting.</span></div>
+            <div class="metric"><strong>Order</strong><span id="orderMetric">No order yet.</span></div>
+          </div>
+
+          <div class="journey">
+            <div class="step active" id="step1"><strong>1. Agent request</strong><span>Select a protocol and product.</span></div>
+            <div class="step" id="step2"><strong>2. Gateway signs</strong><span>Generate canonical payment terms.</span></div>
+            <div class="step" id="step3"><strong>3. Chain payment</strong><span>Submit SettlementGateway.pay().</span></div>
+            <div class="step" id="step4"><strong>4. Receipt check</strong><span>Verify CheckoutSettled event.</span></div>
+            <div class="step" id="step5"><strong>5. Order created</strong><span>Merchant order is committed.</span></div>
+          </div>
+        </div>
+
+        <div class="split">
+          <div class="panel">
+            <h2>Protocol Payload</h2>
+            <pre id="protocolOutput">Generate a checkout to inspect protocol-specific output.</pre>
+          </div>
+          <div class="panel">
+            <h2>Payment / Receipt</h2>
+            <pre id="paymentOutput">Payment instruction and receipt will appear here.</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const state = { config: null, catalog: [], checkout: null };
+    const els = {
+      readyBadge: document.getElementById("readyBadge"),
+      chainBadge: document.getElementById("chainBadge"),
+      tokenBadge: document.getElementById("tokenBadge"),
+      protocol: document.getElementById("protocol"),
+      product: document.getElementById("product"),
+      token: document.getElementById("token"),
+      amount: document.getElementById("amount"),
+      txHash: document.getElementById("txHash"),
+      startBtn: document.getElementById("startBtn"),
+      completeBtn: document.getElementById("completeBtn"),
+      status: document.getElementById("status"),
+      configBox: document.getElementById("configBox"),
+      checkoutMetric: document.getElementById("checkoutMetric"),
+      routerMetric: document.getElementById("routerMetric"),
+      signatureMetric: document.getElementById("signatureMetric"),
+      orderMetric: document.getElementById("orderMetric"),
+      protocolOutput: document.getElementById("protocolOutput"),
+      paymentOutput: document.getElementById("paymentOutput"),
+      steps: [1, 2, 3, 4, 5].map((n) => document.getElementById("step" + n)),
+    };
+
+    function setStatus(text) {
+      els.status.textContent = text;
+    }
+
+    function short(value) {
+      if (!value) return "-";
+      return value.length > 18 ? value.slice(0, 10) + "..." + value.slice(-6) : value;
+    }
+
+    function showJson(el, value) {
+      el.textContent = JSON.stringify(value, null, 2);
+    }
+
+    function setJourney(stage) {
+      els.steps.forEach((el, index) => {
+        el.classList.remove("active", "done");
+        if (index + 1 < stage) el.classList.add("done");
+        if (index + 1 === stage) el.classList.add("active");
+      });
+    }
+
+    async function api(path, options) {
+      const res = await fetch(path, options);
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(payload.message || payload.error || res.statusText);
+      }
+      return payload;
+    }
+
+    async function loadConfig() {
+      const config = await api("/demo/config");
+      state.config = config;
+      els.readyBadge.textContent = config.ready ? "MVP ready" : "config needed";
+      els.readyBadge.className = "badge " + (config.ready ? "ok" : "warn");
+      els.chainBadge.textContent = "chain " + config.chainId;
+      const tokens = config.tokens && config.tokens.length ? config.tokens : [{
+        symbol: config.tokenSymbol,
+        address: config.tokenAddress,
+        mock: config.tokenIsMock
+      }];
+      els.token.innerHTML = tokens
+        .map((token) => `<option value="${token.symbol}">${token.symbol}${token.mock ? " mock" : ""}</option>`)
+        .join("");
+      els.tokenBadge.textContent = tokens.map((token) => token.symbol).join(" / ");
+      els.configBox.innerHTML = [
+        ["contract", config.contractAddress],
+        ["tokens", tokens.map((token) => `${token.symbol}: ${short(token.address)}`).join(", ")],
+        ["agent", config.agent],
+        ["treasury", config.treasury],
+        ["auto-pay", config.canAutoPay ? "enabled" : "disabled"],
+        ["deployment", config.deploymentFile || "-"],
+      ].map(([key, value]) => `<div><strong>${key}</strong><span>${value || "-"}</span></div>`).join("");
+      els.routerMetric.textContent = short(config.contractAddress);
+    }
+
+    async function loadCatalog() {
+      const payload = await api("/demo/catalog");
+      state.catalog = payload.items || [];
+      els.product.innerHTML = state.catalog
+        .map((item) => `<option value="${item.id}">${item.title} - $${(Number(item.priceAmount) / 100).toFixed(2)}</option>`)
+        .join("");
+      syncProductAmount();
+    }
+
+    function selectedProduct() {
+      return state.catalog.find((item) => item.id === els.product.value);
+    }
+
+    function syncProductAmount() {
+      const product = selectedProduct();
+      if (product) els.amount.value = product.priceAmount;
+    }
+
+    async function startCheckout() {
+      els.startBtn.disabled = true;
+      els.completeBtn.disabled = true;
+      setStatus("Generating checkout...");
+      try {
+        const payload = await api("/demo/api/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            protocol: els.protocol.value,
+            productId: els.product.value,
+            tokenSymbol: els.token.value || state.config?.tokenSymbol,
+            amountMinor: els.amount.value,
+          }),
+        });
+        state.checkout = payload;
+        els.checkoutMetric.textContent = short(payload.checkout.checkoutId);
+        els.routerMetric.textContent = short(payload.paymentInstruction.routerAddress);
+        els.signatureMetric.textContent = short(payload.paymentInstruction.gatewaySignature);
+        els.orderMetric.textContent = "Waiting for receipt.";
+        showJson(els.protocolOutput, payload.protocolPayload);
+        showJson(els.paymentOutput, payload.paymentInstruction);
+        els.completeBtn.disabled = false;
+        setJourney(3);
+        setStatus(payload.canAutoPay ? "Checkout ready. Complete can submit the demo payment." : "Checkout ready. Paste an external tx hash before completing.");
+      } catch (error) {
+        setStatus("Error: " + error.message);
+      } finally {
+        els.startBtn.disabled = false;
       }
     }
-  ];
-  steps.forEach((fn, i) => setTimeout(fn, i * 550));
-}
 
-function show(id) { document.getElementById(id).classList.add("active"); }
-function set(id, text) { document.getElementById(id).textContent = text; }
-</script>
+    async function completeOrder() {
+      if (!state.checkout) return;
+      els.completeBtn.disabled = true;
+      setStatus("Completing order...");
+      try {
+        const body = {
+          checkoutSessionId: state.checkout.checkout.id,
+          protocol: state.checkout.checkout.protocol,
+        };
+        if (els.txHash.value.trim()) body.transactionHash = els.txHash.value.trim();
+        const payload = await api("/demo/api/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        els.orderMetric.innerHTML = payload.order.permalinkUrl
+          ? `<a href="${payload.order.permalinkUrl}">${payload.order.id}</a>`
+          : payload.order.id;
+        showJson(els.paymentOutput, { paymentInstruction: state.checkout.paymentInstruction, completion: payload });
+        setJourney(5);
+        setStatus("Order completed and receipt verified.");
+      } catch (error) {
+        setStatus("Error: " + error.message);
+        els.completeBtn.disabled = false;
+      }
+    }
+
+    els.product.addEventListener("change", syncProductAmount);
+    els.startBtn.addEventListener("click", startCheckout);
+    els.completeBtn.addEventListener("click", completeOrder);
+
+    Promise.all([loadConfig(), loadCatalog()])
+      .then(() => {
+        setStatus(state.config.ready ? "Ready." : "Config incomplete. Deploy locally or set environment variables.");
+      })
+      .catch((error) => {
+        setStatus("API unavailable: run npm run server. " + error.message);
+      });
+  </script>
 </body>
 </html>

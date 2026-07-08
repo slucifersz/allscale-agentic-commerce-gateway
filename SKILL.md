@@ -1,83 +1,82 @@
-# SKILL.md — Operating Manual for AI Coding Agents
+# SKILL.md - Operating Manual for AI Coding Agents
 
-This file is for any AI coding agent (or human) continuing work on this repo. Read it fully before changing anything.
+Read this before changing the repo.
 
-## What this project is
+## Project
 
-**AllScale Agentic Commerce Gateway** — a hackathon demo showing AI agent payments (x402 / ACP / AP2 / MPP) normalized into a canonical checkout, screened by two verification gates, then settled on **HashKey Chain testnet (chainId 133)**.
+**AllScale Agentic Commerce Gateway** is a HashKey-focused MVP for agentic commerce payments. It demonstrates how ACP / AP2 / x402 / MPP-style agent requests can become one canonical checkout, receive signed payment terms, settle through an ERC-20 contract, and be verified from an on-chain receipt.
 
-- Event: HashKey Chain **On-Chain Horizon** hackathon
-- **Submission deadline: July 11, 2026**
-- Goal: validate AllScale's "AI × Payments" direction. Optimize for clarity, demo-readiness, and precise claims — **not** feature completeness.
+> **Verification logic shown here is a demonstration. Live KYT / KYC integration is under validation.**
 
-## Architecture overview
+## Current Repo State
 
-```
-AGENT (x402 / ACP / AP2 / MPP)          — mock protocol adapters
-  → ROUTER (canonical checkout)         — demo logic, off-chain
-    → Gate 1: KYT / AML fund-source     — MOCK (provider: AllScale / BlockSec KYT; live integration under validation)
-    → Gate 2: KYC / Authorization       — MOCK (provider: Primus zkTLS; roadmap, not yet integrated)
-      → both pass → SETTLE on HashKey testnet, within ON-CHAIN spending limit  — contract REAL (pending deployment; all info _TBD)
-      → either fails → BLOCK before settlement
-```
-
-Current mock/real status per stage:
-
-| Stage | Status |
+| Path | Purpose |
 |---|---|
-| Protocol adapters | mock |
-| Router / canonical checkout | demo logic |
-| Gate 1 (AllScale KYT/AML via BlockSec) | **mock — demonstration** |
-| Gate 2 (Primus zkTLS KYC/Authorization) | **mock — roadmap** |
-| Settlement contract on HashKey testnet | **the only intended real on-chain component**; not deployed from this repo — real address/tx provided manually later |
-| Frontend | mock data + `_TBD` placeholders for real tx/explorer link |
+| `frontend/index.html` | MVP console that calls the demo API |
+| `server/demo-api.js` | Node HTTP API for catalog, checkout start, payment completion, receipt verification, and order pages |
+| `contracts/SettlementGateway.sol` | MVP settlement contract: EIP-712 signature check, expiry, replay protection, spending limit, ERC-20 transfer |
+| `contracts/MockERC20.sol` | mock token for local and MVP testnet demos; current HashKey testnet deployment has `mUSDC` and `mUSDT` |
+| `scripts/deploy.js` | local / HashKey testnet deploy script |
+| `scripts/compile.js` | solc-js compiler helper |
+| `scripts/e2e-demo.js` | endpoint-level smoke test |
+| `test/SettlementGateway.t.sol` | Foundry-style contract tests; may require Foundry solc availability |
+| `deployments/hashkey-testnet.json` | public HashKey deployment record; only fill with real deployed values |
+| `deployments/local.json` | generated local deployment record; ignored by git |
 
-## Directory map
+## Run Commands
 
-| Path | Contents | Placeholder status |
-|---|---|---|
-| `contracts/SettlementGateway.sol` | Solidity **stub**: interface skeleton for settle entry point, on-chain spending-limit check, events. Reverts by design. | Implementation `_TBD`; will be superseded/confirmed by the real deployed contract code (provided manually) |
-| `deployments/hashkey-testnet.json` | Deployment record. `chainId: 133` is real. | `contractAddress`, `deployTxHash`, `explorerBaseUrl`, `deployedAt` all `_TBD` — filled manually after real deployment |
-| `router/types.ts` | `CanonicalCheckout`, `GateResult`, `CheckoutOutcome` types | stable, editable |
-| `router/protocols.ts` | Mock adapters normalizing x402/ACP/AP2/MPP into canonical checkout | mock, editable |
-| `router/gates.ts` | `allScaleKytGate()` + `primusKycGate()` — **both mock**; header comments state provider + status | mock, editable (keep the provider/status comments intact) |
-| `router/index.ts` | Orchestration: normalize → gates → settle/block; `SETTLEMENT` constant mirrors the deployments file | `SETTLEMENT` fields `_TBD` except chainId |
-| `frontend/index.html` | Static demo page: gate table, trusted/suspicious demo runs, disclaimer banner | tx hash + explorer link + contract info are `_TBD` placeholders (marked with HTML comments) |
-| `demo-script.md` | Presentation walkthrough: trusted path (settle) vs. suspicious path (block), what's mock, what to click | update freely as demo evolves |
+```bash
+npm install
+npm run compile:contracts
+npm run check:js
+```
 
-## RED LINES (most important — do not cross)
+Local MVP:
 
-1. **Never fabricate on-chain data.** No invented contract addresses, tx hashes, or explorer links. Anything unknown stays `_TBD`.
-2. **Never claim live integrations.** KYT / KYC / Primus / BlockSec are NOT integrated. Both gates are mock; Gate 2 is additionally *roadmap*. Provider names describe architectural intent only.
-3. **Never write secrets.** No private keys, mnemonics, seeds, API keys, or RPC credentials anywhere in the repo — including deployments files and contracts.
-4. **Primus framing must stay exact.** Primus zkTLS = **data authenticity / selective disclosure** (proves the payer is backed by an entity that passed AllScale KYC and is within its authorized limit, without revealing the entity's identity). It is **NOT** "private payment execution". Do not conflate the two.
-5. **Spending limit is decided by the on-chain contract**, not by Primus and not by any off-chain gate. Keep this attribution correct everywhere.
-6. **The disclaimer must remain** in both README.md and the frontend, verbatim: *"Verification logic shown here is a demonstration. Live KYT / KYC integration is under validation."*
+```bash
+anvil --host 127.0.0.1 --port 8545
+npm run deploy:local
+PORT=8791 npm run server
+DEMO_BASE_URL=http://127.0.0.1:8791 npm run test:e2e
+```
 
-## `_TBD` placeholder inventory
+HashKey testnet:
 
-All of these are replaced **manually by a human** with the actual deployed-contract info (provided by the project owner's collaborator). Do not fill them yourself.
+```bash
+npm run deploy:hashkey
+```
 
-| File | Placeholder |
-|---|---|
-| `deployments/hashkey-testnet.json` | `contractAddress`, `deployTxHash`, `explorerBaseUrl`, `deployedAt` |
-| `router/index.ts` | `SETTLEMENT.contractAddress`, `SETTLEMENT.deployTxHash`, `SETTLEMENT.explorerBaseUrl`; `settlementTxHash` in the settled outcome |
-| `frontend/index.html` | Settlement tx hash (`#tx-hash`), explorer link (`#explorer-link`), and the settlement-contract table rows (`contractAddress` / `deployTxHash` / `explorerBaseUrl`) — each marked with a `<!-- PLACEHOLDER -->` comment |
-| `contracts/SettlementGateway.sol` | Function bodies marked `_TBD` (real implementation arrives with the actual deployment) |
+Required env vars for testnet: `HASHKEY_TESTNET_RPC_URL`, `HASHKEY_TESTNET_DEPLOYER_PRIVATE_KEY`, `GATEWAY_SIGNER_PRIVATE_KEY`, `DEMO_AGENT_PRIVATE_KEY`, and optionally `TOKEN_ADDRESS`, `TOKEN_DECIMALS`, `TOKEN_SYMBOL`, `EXPLORER_BASE_URL`.
 
-## What you may change vs. what you must wait for
+Add a mock token to the existing deployment:
 
-**Free to improve:**
-- Frontend styling, copy, and demo interactions
-- `demo-script.md` wording and flow
-- Mock logic in `router/` (adapters, gate heuristics, types) — as long as gates stay clearly labeled mock and header comments stay accurate
+```bash
+TOKEN_NAME="Mock USDT" TOKEN_SYMBOL=mUSDT npm run deploy:hashkey-token
+```
 
-**Wait for human input — do not invent:**
-- Settlement contract implementation and its real deployed code
-- Contract address, deploy tx hash, explorer base URL, deployment timestamp
-- Any real on-chain transaction data
-- Any claim that a KYT/KYC provider integration went live
+## Red Lines
 
-## Git / remote operations
+1. Never commit real private keys, mnemonics, RPC secrets, API keys, or wallet keystores.
+2. Never fabricate on-chain data. Unknown deployment values stay `_TBD`.
+3. Never claim KYT / KYC / Primus / BlockSec integrations are live. They are not live in this repo.
+4. Keep the disclaimer verbatim in README and frontend: **"Verification logic shown here is a demonstration. Live KYT / KYC integration is under validation."**
+5. Primus zkTLS means data authenticity with selective disclosure. It is not private payment execution and does not enforce spending limits.
+6. Spending limits are enforced by `SettlementGateway`, not by off-chain verification.
+7. If the deploy script uses a mock token on HashKey testnet, label it as mock. Do not present `mUSDC` / `mUSDT` as official USDC/USDT.
 
-Repo initialization, commits, and pushes are handled **manually by the project owner**. Unless explicitly instructed otherwise in a future session, do not run `git init` / `commit` / `push` or configure remotes.
+## Implementation Notes
+
+- `SettlementGateway.pay()` requires `msg.sender == agent`.
+- The gateway signature binds `checkoutId`, `merchantId`, `agent`, `token`, `amount`, `treasury`, `expiresAt`, and `metadataHash`.
+- Receipt verification in `server/demo-api.js` accepts a payment only if the transaction succeeded, targeted the configured contract, and emitted a matching `CheckoutSettled` event.
+- The demo API keeps checkout and order state in memory. Persistent storage is intentionally out of scope for this MVP.
+- `deployments/local.json` is generated and ignored. Regenerate it whenever Anvil restarts.
+
+## What Is Still Out Of Scope
+
+- Live KYT / AML provider integration
+- Live Primus zkTLS attestation
+- Real merchant callback persistence
+- Production database
+- Production wallet UX
+- Real HashKey stablecoin token configuration unless explicitly supplied

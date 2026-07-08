@@ -44,9 +44,8 @@ export type CheckoutOutcome =
       checkout: CanonicalCheckout;
       gateResults: GateResult[];
       /**
-       * Real settlement tx hash on HashKey Chain testnet (chainId 133).
-       * _TBD until the settlement contract is actually deployed and a
-       * real transaction exists. Never fabricate this value.
+       * Settlement tx hash, if a caller wires this mock router to a real
+       * SettlementGateway payment. The runnable MVP does this in server/demo-api.js.
        */
       settlementTxHash: "_TBD" | string;
     }
