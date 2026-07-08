@@ -75,7 +75,8 @@ TOKEN_NAME="Mock USDT" TOKEN_SYMBOL=mUSDT npm run deploy:hashkey-token
 ## What Is Still Out Of Scope
 
 - Live KYT / AML provider integration
-- Live Primus zkTLS attestation        Design: see docs/verification-integration-design.md
+- Live Primus zkTLS attestation
+- Live integration design for both gates: [docs/verification-integration-design.md](docs/verification-integration-design.md)
 - Real merchant callback persistence
 - Production database
 - Production wallet UX
