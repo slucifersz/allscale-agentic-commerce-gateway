@@ -76,6 +76,11 @@ async function main() {
       `Connected chainId ${network.chainId} does not match expected ${expectedChainId}`
     );
   }
+  if (network.chainId === 177n) {
+    throw new Error(
+      "Refusing to run the local/testnet deploy script on HashKey mainnet (chainId 177). Use `npm run deploy:hashkey-mainnet` instead."
+    );
+  }
 
   const settlementArtifact = getArtifact("SettlementGateway");
   const erc20Artifact = getArtifact("MockERC20");

@@ -54,6 +54,11 @@ async function main() {
   const agent = new ethers.NonceManager(agentWallet);
   const treasury = process.env.DEMO_MERCHANT_TREASURY || deployerWallet.address;
   const network = await provider.getNetwork();
+  if (network.chainId === 177n) {
+    throw new Error(
+      "Refusing to run the smoke test against HashKey mainnet (chainId 177). Point RPC_URL at a local Anvil node."
+    );
+  }
 
   const settlementArtifact = getArtifact("SettlementGateway");
   const tokenArtifact = getArtifact("MockERC20");

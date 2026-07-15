@@ -12,6 +12,12 @@ id_rsa*
 secrets.json
 credentials.json
 serviceAccount*.json
+keystore
+keystores
+mnemonic
+seed
+secrets
+credentials
 
 # Dependencies
 node_modules/

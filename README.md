@@ -117,6 +117,41 @@ The current HashKey testnet deployment records two MVP test tokens:
 
 These are not official USDC/USDT contracts.
 
+## HashKey Chain Mainnet Deploy
+
+> **Status: mainnet deployment support is implemented, but the contract has NOT been deployed to mainnet yet.** `deployments/hashkey-mainnet.json` does not exist until a real deployment succeeds; do not fabricate it.
+
+Mainnet parameters:
+
+| Item | Value |
+|---|---|
+| Chain ID | `177` |
+| RPC | `https://mainnet.hsk.xyz` |
+| Explorer | `https://hsk.blockscout.com` |
+| USDC (bridged) | `0x054ed45810DbBAb8B27668922D110669c9D88D0a` (6 decimals) |
+
+Key rules:
+
+- Mock tokens are forbidden on mainnet. `scripts/deploy-mainnet.js` refuses `DEPLOY_MOCK_TOKEN=true`, never deploys `MockERC20`, never calls `mint()`, and uses a minimal ERC-20 ABI for the real USDC token.
+- Private keys are filled into `.env.local` only via the interactive helper (silent input, atomic write, `chmod 600`):
+
+  ```bash
+  bash scripts/setup-mainnet-secrets.sh
+  ```
+
+- `.env.local` is git-ignored and must never be committed. The Merchant Treasury only receives USDC; its private key is never needed by this repo.
+- Before deploying, the script performs read-only checks: expected deployer/signer/agent addresses derived from the keys, chain ID `177`, USDC bytecode presence, `decimals() == 6`, `symbol()`, and a non-zero deployer HSK balance.
+- Agent ERC-20 approval is bounded (`APPROVAL_TOKEN_UNITS`, default 1 USDC) and disabled by default (`AUTO_APPROVE=false`); unlimited (`MaxUint256`) approvals are never used on mainnet.
+- KYT, KYC, and Primus zkTLS remain mock/roadmap on mainnet exactly as documented in [Verification Boundaries](#verification-boundaries).
+
+Deploy (only after read-only checks pass and you explicitly confirm):
+
+```bash
+npm run deploy:hashkey-mainnet
+```
+
+A successful real deployment writes `deployments/hashkey-mainnet.json` (with `"mock": false` and the real contract address / tx hashes) and sets the demo agent spending limit from `SPENDING_LIMIT_TOKEN_UNITS` (default 1 USDC). The demo API reads that file automatically when `CHAIN_ID=177`, or honors an explicit `DEPLOYMENT_FILE=`.
+
 ## API Endpoints
 
 | Endpoint | Purpose |
