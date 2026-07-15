@@ -67,6 +67,11 @@ async function main() {
       `Connected chainId ${network.chainId} does not match expected ${expectedChainId}`
     );
   }
+  if (network.chainId === 177n) {
+    throw new Error(
+      "Refusing to deploy mock tokens on HashKey mainnet (chainId 177). Mainnet uses real bridged USDC only."
+    );
+  }
 
   const tokenName = process.env.TOKEN_NAME || "Mock USDT";
   const tokenSymbol = process.env.TOKEN_SYMBOL || "mUSDT";

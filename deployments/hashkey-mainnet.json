@@ -1,0 +1,30 @@
+{
+  "network": "HashKey Chain Mainnet",
+  "chainId": 177,
+  "contractName": "SettlementGateway",
+  "contractAddress": "0xDF0008D5C6fFb332A4A21a15018954e90f4fae01",
+  "deployTxHash": "0xafb7e6e542001e14fab6a329590f6f154a75fd1e1d0f477a2c5749e478ed0134",
+  "explorerBaseUrl": "https://hsk.blockscout.com",
+  "deployedAt": "2026-07-15T17:37:35.930Z",
+  "gatewaySigner": "0x56a19dB692F9Fb9B0EC0C1F5B4497b5ba11a9609",
+  "demoAgent": "0x3e263b59c766ba7340108c6FFac42D07002Fa99B",
+  "merchantTreasury": "0x0Bbe314e75e36b9b9E875a70cE93d6f0ff0B5563",
+  "token": {
+    "symbol": "USDC.e",
+    "decimals": 6,
+    "address": "0x054ed45810DbBAb8B27668922D110669c9D88D0a",
+    "mock": false
+  },
+  "tokens": {
+    "USDC.e": {
+      "symbol": "USDC.e",
+      "decimals": 6,
+      "address": "0x054ed45810DbBAb8B27668922D110669c9D88D0a",
+      "mock": false
+    }
+  },
+  "setupTxHashes": {
+    "setSpendingLimit": "0xbb2791d71d4c4480a1dcdb5b11441555d2486aa40f9693efc826d68e6b16d906"
+  },
+  "notes": "HashKey Chain Mainnet deployment using bridged USDC. No mock tokens are deployed or minted on mainnet."
+}

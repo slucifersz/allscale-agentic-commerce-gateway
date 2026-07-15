@@ -62,16 +62,25 @@ function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
 
+const MAINNET_CHAIN_ID = 177;
+const MAINNET_DEPLOYMENT_FILE = "deployments/hashkey-mainnet.json";
+
 function loadDeployment() {
   const explicit = process.env.DEPLOYMENT_FILE
     ? path.resolve(ROOT, process.env.DEPLOYMENT_FILE)
     : "";
   const localDeployment = path.join(ROOT, "deployments", "local.json");
   const hashKeyDeployment = path.join(ROOT, "deployments", "hashkey-testnet.json");
+  const mainnetDeployment = path.join(ROOT, MAINNET_DEPLOYMENT_FILE);
+  const configuredChainId = Number(process.env.CHAIN_ID || "0");
+  // On mainnet, never fall back to testnet/local deployment records: the
+  // EIP-712 domain must only ever reference the mainnet contract address.
   const preferred =
-    Number(process.env.CHAIN_ID || "0") === 133
-      ? [hashKeyDeployment, localDeployment]
-      : [localDeployment, hashKeyDeployment];
+    configuredChainId === MAINNET_CHAIN_ID
+      ? [mainnetDeployment]
+      : configuredChainId === 133
+        ? [hashKeyDeployment, localDeployment]
+        : [localDeployment, hashKeyDeployment];
   const candidates = [explicit, ...preferred].filter(Boolean);
 
   for (const candidate of candidates) {
@@ -111,6 +120,8 @@ function deploymentTokens(deployment) {
 function appConfig(selectedTokenSymbol) {
   const deployment = loadDeployment();
   const chainId = Number(process.env.CHAIN_ID || deployment?.chainId || "31337");
+  const mainnetDeploymentMissing =
+    Number(process.env.CHAIN_ID || "0") === MAINNET_CHAIN_ID && !deployment;
   const tokens = deploymentTokens(deployment);
   if (process.env.TOKEN_ADDRESS) {
     const envSymbol = process.env.TOKEN_SYMBOL || selectedTokenSymbol || "mUSDC";
@@ -149,6 +160,7 @@ function appConfig(selectedTokenSymbol) {
 
   return {
     deployment,
+    mainnetDeploymentMissing,
     rpcUrl,
     chainId,
     contractAddress,
@@ -214,6 +226,16 @@ function readRequestJson(req) {
 }
 
 function requireConfig(config) {
+  if (config.mainnetDeploymentMissing) {
+    const error = new Error(
+      "HashKey Chain Mainnet is not deployed yet: " +
+        `${MAINNET_DEPLOYMENT_FILE} was not found. Run ` +
+        "`npm run deploy:hashkey-mainnet` to deploy, or set DEPLOYMENT_FILE " +
+        "explicitly."
+    );
+    error.statusCode = 503;
+    throw error;
+  }
   if (!config.ready) {
     const missing = [];
     if (!config.contractAddress) missing.push("contractAddress");
@@ -445,6 +467,17 @@ async function submitPayment(checkoutRecord) {
       { statusCode: 400 }
     );
   }
+  if (
+    Number(config.chainId) === MAINNET_CHAIN_ID &&
+    process.env.ALLOW_MAINNET_AUTOPAY !== "true"
+  ) {
+    throw Object.assign(
+      new Error(
+        "Auto-payment is disabled on HashKey mainnet. Set ALLOW_MAINNET_AUTOPAY=true to enable it deliberately, or submit a transactionHash instead."
+      ),
+      { statusCode: 403 }
+    );
+  }
 
   const provider = new ethers.JsonRpcProvider(config.rpcUrl);
   const wallet = new ethers.NonceManager(
@@ -645,6 +678,14 @@ async function route(req, res) {
       ready: config.ready,
       canAutoPay: config.canAutoPay,
       chainId: config.chainId,
+      mainnetDeploymentMissing: config.mainnetDeploymentMissing,
+      ...(config.mainnetDeploymentMissing
+        ? {
+            notice:
+              `HashKey Chain Mainnet is not deployed yet (${MAINNET_DEPLOYMENT_FILE} not found). ` +
+              "Run `npm run deploy:hashkey-mainnet` to deploy.",
+          }
+        : {}),
       contractAddress: config.contractAddress || "_TBD",
       tokens: config.tokens,
       tokenAddress: config.tokenAddress || "_TBD",
