@@ -636,7 +636,7 @@ footer{border-top:1px solid var(--border-soft);padding:64px 0 80px;margin-top:40
         <span class="pill pill-green">x402</span>
         <p class="pc-lead">HTTP 402 paid resource.</p>
         <ul class="pc-list">
-          <li><span class="code-amber">network: eip155:133</span></li>
+          <li><span class="code-amber">network: eip155:177</span></li>
           <li><span class="code-amber">asset</span> and <span class="code-amber">payTo</span></li>
           <li><span class="code-amber">checkoutId</span> extension</li>
         </ul>
@@ -760,11 +760,11 @@ footer{border-top:1px solid var(--border-soft);padding:64px 0 80px;margin-top:40
       <div class="sm-card">
         <h3>HashKey Chain configuration</h3>
         <ul class="sm-list">
-          <li>Testnet chain ID: <span class="code-amber">133</span></li>
+          <li>Mainnet chain ID: <span class="code-amber">177</span> — <span class="pill pill-green">LIVE</span></li>
           <li>Native token: <span class="code-amber">HSK</span></li>
-          <li>Test stablecoins: <span class="code-amber">mUSDC</span> · <span class="code-amber">mUSDT</span> (test tokens on testnet)</li>
+          <li>Mainnet stablecoin: <span class="code-amber">USDC.e</span> (bridged USDC)</li>
           <li>Settlement contract: <span class="code-amber">SettlementGateway</span></li>
-          <li>Mainnet (chain ID <span class="code-amber">177</span>) settlement — <span class="pill pill-amber">ROADMAP</span></li>
+          <li>Testnet (chain ID <span class="code-amber">133</span>): <span class="code-amber">mUSDC</span> · <span class="code-amber">mUSDT</span> test tokens</li>
         </ul>
       </div>
       <div class="sm-card">
@@ -889,7 +889,7 @@ footer{border-top:1px solid var(--border-soft);padding:64px 0 80px;margin-top:40
               <summary>View receipt</summary>
               <div class="kvmini">
                 <span class="mk">settlement_tx</span>&nbsp;&nbsp;TX_HASH_TBD<br>
-                <span class="mk">chain</span>&nbsp;&nbsp;HashKey testnet (chainId 133)<br>
+                <span class="mk">chain</span>&nbsp;&nbsp;HashKey mainnet (chainId 177)<br>
                 <span class="mk">status</span>&nbsp;&nbsp;settled → order released
               </div>
             </details>
@@ -937,7 +937,7 @@ footer{border-top:1px solid var(--border-soft);padding:64px 0 80px;margin-top:40
 <section id="live">
   <div class="wrap">
     <div class="eyebrow">Live on-chain settlement</div>
-    <h2 class="sec-title">Not just a simulation — try it on HashKey testnet.</h2>
+    <h2 class="sec-title">Not just a simulation — live on HashKey mainnet.</h2>
 
     <!-- fallback card (shown when backend is unreachable) -->
     <div class="live-fallback" id="liveFallback" style="display:none">
@@ -1017,19 +1017,19 @@ footer{border-top:1px solid var(--border-soft);padding:64px 0 80px;margin-top:40
   <div class="wrap">
     <div class="foot-grid">
       <div>
-        <h4>Deployment · HashKey testnet (chainId 133)</h4>
+        <h4>Deployment · HashKey mainnet (chainId 177)</h4>
         <div class="foot-kv">
-          <span class="fk">SettlementGateway</span>&nbsp;&nbsp;0xb7B4419f4e59762beBD9139298fA6E6A712E9403<br>
-          <span class="fk">mUSDC</span>&nbsp;&nbsp;0x63431ad54ACed83B635DDEeE1ae7b4f5dfB3d65d<br>
-          <span class="fk">mUSDT</span>&nbsp;&nbsp;0xB80eeF2d44d5055C4A8Babfb0b8c482Fa0F7cE25<br>
-          <span class="fk">Explorer</span>&nbsp;&nbsp;<a href="https://testnet-explorer.hsk.xyz" target="_blank" rel="noopener">testnet-explorer.hsk.xyz</a>
+          <span class="fk">SettlementGateway</span>&nbsp;&nbsp;0xDF0008D5C6fFb332A4A21a15018954e90f4fae01<br>
+          <span class="fk">USDC.e</span>&nbsp;&nbsp;0x054ed45810DbBAb8B27668922D110669c9D88D0a<br>
+          <span class="fk">Explorer</span>&nbsp;&nbsp;<a href="https://hsk.blockscout.com/address/0xDF0008D5C6fFb332A4A21a15018954e90f4fae01" target="_blank" rel="noopener">hsk.blockscout.com</a> (verified source)<br>
+          <span class="fk">Testnet (133)</span>&nbsp;&nbsp;0xb7B4419f4e59762beBD9139298fA6E6A712E9403 · mUSDC / mUSDT
         </div>
       </div>
       <div>
         <h4>Project</h4>
         <div class="foot-kv">
           <a href="https://github.com/slucifersz/allscale-agentic-commerce-gateway" target="_blank" rel="noopener">github.com/slucifersz/allscale-agentic-commerce-gateway</a><br>
-          <span class="fk">chain</span>&nbsp;&nbsp;HashKey testnet · chainId 133
+          <span class="fk">chain</span>&nbsp;&nbsp;HashKey mainnet · chainId 177
         </div>
       </div>
     </div>
@@ -1312,7 +1312,7 @@ document.documentElement.classList.add('js');
       kvRow('contract', cfg.contractAddress, {truncate:true}),
       kvRow('agent', cfg.agent, {truncate:true}),
       kvRow('treasury', cfg.treasury, {truncate:true}),
-      kvRow('chain', 'HashKey testnet · ' + cfg.chainId),
+      kvRow('chain', (cfg.chainId === 177 ? 'HashKey mainnet' : cfg.chainId === 133 ? 'HashKey testnet' : 'local chain') + ' · ' + cfg.chainId),
       kvRow('auto-pay', cfg.canAutoPay ? 'enabled' : 'disabled', {green: !!cfg.canAutoPay})
     ];
     (cfg.tokens || []).forEach(function(t){
