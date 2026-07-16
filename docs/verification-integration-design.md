@@ -11,12 +11,12 @@
 
 ## Summary
 
-In the current demo, both gates are mocked but preserve the same interface
-and ordering as the intended live system. The production path replaces each
-mock with an external verification call while keeping the canonical
-checkout, the `GateResult` contract, and the settlement sequencing
-unchanged. The mocks are placeholders for calls, not placeholders for
-architecture.
+In the current repository, both gates are synchronous mocks in the legacy
+TypeScript router. `server/demo-api.js`, which implements the runnable payment
+path, does not import that router and therefore does not execute either gate.
+The interfaces illustrate the intended boundary, but a live integration also
+requires async orchestration, fail-closed error handling, a non-literal
+`GateResult.mock` type, and explicit wiring into the runnable path.
 
 ---
 
@@ -24,13 +24,20 @@ architecture.
 
 | Gate | Check | Provider (architectural intent) | Current implementation |
 |------|-------|--------------------------------|------------------------|
-| Gate 1 | KYT / AML fund-source screening | AllScale KYT service (intended BlockSec-backed integration; BlockSec KYT is used in AllScale's production products, but no integration exists in this repo) | `allScaleKytGate()` — flags a checkout if the agent id contains a demo marker; no external call |
-| Gate 2 | Payer verification: principal identity + payment mandate | Primus (zkTLS) | `primusKycGate()` — same demo marker heuristic; no attestation is generated or verified |
+| Gate 1 | KYT / AML fund-source screening | AllScale KYT service (intended BlockSec-backed integration; BlockSec KYT is used in AllScale's production products, but no integration exists in this repo) | `allScaleKytGate()` — flags a checkout if the agent string contains `suspicious`; no external call |
+| Gate 2 | Payer verification: principal identity + payment mandate | Primus (zkTLS) | `primusKycGate()` — same `suspicious` substring heuristic; no attestation is generated or verified |
 
-Both functions return a `GateResult` (`router/types.ts`) and run **off-chain,
-before settlement**. If either gate fails, the payment is blocked and the
-`pay()` transaction is never sent. This sequencing — verify first, settle
-only after both gates pass — is unchanged in the live design.
+Both functions return a `GateResult` (`router/types.ts`). They run before the
+mock outcome in `router/index.ts`, but they do **not** run before settlement in
+`server/demo-api.js`. Consequently, the current runnable payment API does not
+provide KYT/KYC blocking. The intended live sequencing is verify first and
+settle only after both gates pass.
+
+The shared canonical input available for future wiring is:
+
+`protocol`, `checkoutId`, `merchantId`, `agent`, `token`, `amount`, `treasury`,
+`expiresAt`, and `metadataHash`. `amount` is a JSON-safe decimal string and
+`expiresAt` is a Unix timestamp in seconds.
 
 What is already real and stays as-is:
 
@@ -211,19 +218,25 @@ attestation reference on-chain for audit purposes.)
 
 ---
 
-## 4. Replacement path (why this is a drop-in change)
+## 4. Integration path
 
-Both live integrations keep the existing interfaces:
+The canonical input and the conceptual `GateResult` output can remain stable,
+but the current mocks are not a literal drop-in live integration. Required
+changes are:
 
-- Input stays `CanonicalCheckout`; output stays `GateResult`
-  (`router/types.ts`). The functions become `async`, which the calling
-  pipeline already tolerates.
-- The demo API (`server/demo-api.js`) and frontend consume `GateResult`
-  fields (`passed`, `reason`, `provider`) — no UI contract change.
-- `mock: true` becomes `mock: false` per gate as each integration goes
-  live, so the UI can drop the MOCK badge per gate independently.
-- Gate ordering and fail-closed blocking (verify → only then settle) are
-  unchanged.
+- Keep input as `CanonicalCheckout`, then extend `GateResult.mock` from the
+  current literal `true` to a boolean or a mock/live discriminated union.
+- Make the provider functions async and add timeouts, authenticated provider
+  calls, response validation, and fail-closed error mapping.
+- Make `routeAgentPayment()` async or introduce equivalent orchestration in
+  `server/demo-api.js`; the current synchronous caller does not tolerate
+  promises.
+- Run both gates before returning payment calldata or submitting auto-payment,
+  and include auditable gate results in the API response.
+- Update the frontend to consume those results; it does not currently consume
+  `GateResult` from the TypeScript router.
+- Change `mock: true` to `mock: false` independently only after each live
+  provider path is implemented and tested.
 
 Rollout order: **Gate 1 first** (single off-chain API call, no agent-side
 tooling), then Gate 2.

@@ -7,13 +7,15 @@
     "compile:contracts": "node scripts/compile.js SettlementGateway && node scripts/compile.js MockERC20",
     "build:contracts": "npm run compile:contracts",
     "test:contracts": "node scripts/contract-smoke-test.js",
+    "test:canonical": "node scripts/canonical-checkout-test.js",
+    "test:state": "node scripts/state-store-test.js",
     "deploy:local": "node scripts/deploy.js --network local",
     "deploy:hashkey": "node scripts/deploy.js --network hashkey-testnet",
     "deploy:hashkey-token": "node scripts/deploy-mock-token.js --network hashkey-testnet",
     "deploy:hashkey-mainnet": "node scripts/deploy-mainnet.js --network hashkey-mainnet",
     "approve:hashkey-mainnet": "node scripts/approve-mainnet-usdc.js",
     "server": "node server/demo-api.js",
-    "check:js": "node --check server/demo-api.js && node --check scripts/deploy.js && node --check scripts/deploy-mainnet.js && node --check scripts/approve-mainnet-usdc.js && node --check scripts/deploy-mock-token.js && node --check scripts/e2e-demo.js && node --check scripts/contract-smoke-test.js",
+    "check:js": "node --check shared/canonical-checkout.js && node --check server/state-store.js && node --check server/demo-api.js && node --check scripts/deploy.js && node --check scripts/deploy-mainnet.js && node --check scripts/approve-mainnet-usdc.js && node --check scripts/deploy-mock-token.js && node --check scripts/e2e-demo.js && node --check scripts/contract-smoke-test.js && node --check scripts/canonical-checkout-test.js && node --check scripts/state-store-test.js",
     "test:e2e": "node scripts/e2e-demo.js"
   },
   "dependencies": {

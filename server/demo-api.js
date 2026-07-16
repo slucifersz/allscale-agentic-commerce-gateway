@@ -5,6 +5,14 @@ const { randomUUID } = require("crypto");
 const { ethers } = require("ethers");
 const { getArtifact } = require("../scripts/compile");
 const { loadEnv } = require("../scripts/env");
+const { createDemoStateStore } = require("./state-store");
+const {
+  AGENT_PROTOCOLS,
+  CHECKOUT_TYPES,
+  parseCanonicalCheckout,
+  settlementArgumentsFromCheckout,
+  settlementRequestFromCheckout,
+} = require("../shared/canonical-checkout");
 
 loadEnv();
 
@@ -12,19 +20,7 @@ const PORT = Number(process.env.PORT || "8787");
 const ROOT = process.cwd();
 const FRONTEND_FILE = path.join(ROOT, "frontend", "index.html");
 const SETTLEMENT_ABI = getArtifact("SettlementGateway").abi;
-
-const CHECKOUT_TYPES = {
-  Checkout: [
-    { name: "checkoutId", type: "bytes32" },
-    { name: "merchantId", type: "bytes32" },
-    { name: "agent", type: "address" },
-    { name: "token", type: "address" },
-    { name: "amount", type: "uint256" },
-    { name: "treasury", type: "address" },
-    { name: "expiresAt", type: "uint256" },
-    { name: "metadataHash", type: "bytes32" },
-  ],
-};
+const stateStore = createDemoStateStore(ROOT);
 
 const CATALOG = [
   {
@@ -52,10 +48,6 @@ const CATALOG = [
     metadata: { fulfillment: "digital", protocol: "AP2" },
   },
 ];
-
-const checkouts = new Map();
-const orders = new Map();
-const usedTxHashes = new Set();
 
 function readJson(filePath) {
   if (!fs.existsSync(filePath)) return null;
@@ -344,7 +336,7 @@ async function startCheckout(payload) {
 
   const product = findProduct(payload.productId || CATALOG[0].id);
   const protocol = String(payload.protocol || "acp").toLowerCase();
-  if (!["acp", "ap2", "x402", "mpp"].includes(protocol)) {
+  if (!AGENT_PROTOCOLS.includes(protocol)) {
     throw Object.assign(new Error(`Unsupported protocol: ${protocol}`), {
       statusCode: 400,
     });
@@ -371,7 +363,8 @@ async function startCheckout(payload) {
   };
   const metadataHash = metadataHashFor({ product, protocol, amountMinor, id });
 
-  const value = {
+  const canonicalCheckout = parseCanonicalCheckout({
+    protocol,
     checkoutId,
     merchantId,
     agent: config.demoAgentAddress,
@@ -380,7 +373,9 @@ async function startCheckout(payload) {
     treasury: config.merchantTreasury,
     expiresAt,
     metadataHash,
-  };
+  });
+
+  const settlementRequest = settlementRequestFromCheckout(canonicalCheckout);
   const domain = {
     name: "AllScale SettlementGateway",
     version: "1",
@@ -391,38 +386,31 @@ async function startCheckout(payload) {
   const gatewaySignature = await gatewaySigner.signTypedData(
     domain,
     CHECKOUT_TYPES,
-    value
+    settlementRequest
   );
 
   const iface = new ethers.Interface(SETTLEMENT_ABI);
-  const calldata = iface.encodeFunctionData("pay", [
-    checkoutId,
-    merchantId,
-    config.demoAgentAddress,
-    config.tokenAddress,
-    amount,
-    config.merchantTreasury,
-    expiresAt,
-    metadataHash,
-    gatewaySignature,
-  ]);
+  const calldata = iface.encodeFunctionData(
+    "pay",
+    settlementArgumentsFromCheckout(canonicalCheckout, gatewaySignature)
+  );
 
   const checkout = {
     id,
     status: "ready_for_payment",
     protocol,
-    checkoutId,
+    checkoutId: canonicalCheckout.checkoutId,
     merchantCheckoutId: `demo_cart_${product.id}`,
     totalAmount: amountMinor,
     currency: "USD",
     tokenSymbol: config.tokenSymbol,
-    tokenAddress: config.tokenAddress,
+    tokenAddress: canonicalCheckout.token,
     tokenDecimals: config.tokenDecimals,
-    expiresAt: new Date(expiresAt * 1000).toISOString(),
+    expiresAt: new Date(canonicalCheckout.expiresAt * 1000).toISOString(),
     lineItems: [lineItem],
-    agent: config.demoAgentAddress,
-    merchantId,
-    metadataHash,
+    agent: canonicalCheckout.agent,
+    merchantId: canonicalCheckout.merchantId,
+    metadataHash: canonicalCheckout.metadataHash,
   };
 
   const paymentInstruction = {
@@ -430,16 +418,7 @@ async function startCheckout(payload) {
     network: `eip155:${config.chainId}`,
     routerAddress: config.contractAddress,
     functionName: "pay",
-    request: {
-      checkoutId,
-      merchantId,
-      agent: config.demoAgentAddress,
-      token: config.tokenAddress,
-      amount: amount.toString(),
-      treasury: config.merchantTreasury,
-      expiresAt: String(expiresAt),
-      metadataHash,
-    },
+    request: settlementRequest,
     gatewaySignature,
     calldata,
     tokenSymbol: checkout.tokenSymbol,
@@ -450,12 +429,13 @@ async function startCheckout(payload) {
   const response = {
     mode: "mvp-chain",
     merchant,
+    canonicalCheckout,
     checkout,
     paymentInstruction,
     protocolPayload: protocolPayload(protocol, checkout, paymentInstruction),
     canAutoPay: config.canAutoPay,
   };
-  checkouts.set(id, response);
+  stateStore.putCheckout(id, response);
   return response;
 }
 
@@ -480,11 +460,19 @@ async function submitPayment(checkoutRecord) {
   }
 
   const provider = new ethers.JsonRpcProvider(config.rpcUrl);
-  const wallet = new ethers.NonceManager(
-    new ethers.Wallet(config.demoAgentPrivateKey, provider)
-  );
+  const signer = new ethers.Wallet(config.demoAgentPrivateKey, provider);
+  if (
+    signer.address.toLowerCase() !==
+    checkoutRecord.canonicalCheckout.agent.toLowerCase()
+  ) {
+    throw Object.assign(
+      new Error("DEMO_AGENT_PRIVATE_KEY does not match the checkout agent"),
+      { statusCode: 400 }
+    );
+  }
+  const wallet = new ethers.NonceManager(signer);
   const tx = await wallet.sendTransaction({
-    to: config.contractAddress,
+    to: checkoutRecord.paymentInstruction.routerAddress,
     data: checkoutRecord.paymentInstruction.calldata,
   });
   await tx.wait();
@@ -494,13 +482,19 @@ async function submitPayment(checkoutRecord) {
 async function verifyReceipt(txHash, checkoutRecord) {
   const config = appConfig();
   requireConfig(config);
+  const paymentInstruction = checkoutRecord.paymentInstruction;
+  const expectedRequest = settlementRequestFromCheckout(
+    checkoutRecord.canonicalCheckout
+  );
+  const expectedContract = paymentInstruction.routerAddress;
+  const expectedChainId = Number(paymentInstruction.chainId);
 
   if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) {
     throw Object.assign(new Error("transactionHash must be a 32-byte hex string"), {
       statusCode: 400,
     });
   }
-  if (usedTxHashes.has(txHash.toLowerCase())) {
+  if (stateStore.hasUsedTransaction(txHash)) {
     throw Object.assign(new Error("transactionHash was already used"), {
       statusCode: 409,
     });
@@ -508,9 +502,11 @@ async function verifyReceipt(txHash, checkoutRecord) {
 
   const provider = new ethers.JsonRpcProvider(config.rpcUrl);
   const network = await provider.getNetwork();
-  if (Number(network.chainId) !== Number(config.chainId)) {
+  if (Number(network.chainId) !== expectedChainId) {
     throw Object.assign(
-      new Error(`RPC chainId ${network.chainId} does not match config ${config.chainId}`),
+      new Error(
+        `RPC chainId ${network.chainId} does not match checkout ${expectedChainId}`
+      ),
       { statusCode: 502 }
     );
   }
@@ -524,7 +520,7 @@ async function verifyReceipt(txHash, checkoutRecord) {
   if (receipt.status !== 1) {
     throw Object.assign(new Error("transaction reverted"), { statusCode: 400 });
   }
-  if (receipt.to?.toLowerCase() !== config.contractAddress.toLowerCase()) {
+  if (receipt.to?.toLowerCase() !== expectedContract.toLowerCase()) {
     throw Object.assign(new Error("transaction target is not SettlementGateway"), {
       statusCode: 400,
     });
@@ -533,20 +529,19 @@ async function verifyReceipt(txHash, checkoutRecord) {
   const iface = new ethers.Interface(SETTLEMENT_ABI);
   let matchedEvent = null;
   for (const log of receipt.logs) {
-    if (log.address.toLowerCase() !== config.contractAddress.toLowerCase()) continue;
+    if (log.address.toLowerCase() !== expectedContract.toLowerCase()) continue;
     try {
       const parsed = iface.parseLog(log);
       if (parsed?.name === "CheckoutSettled") {
         const args = parsed.args;
-        const request = checkoutRecord.paymentInstruction.request;
         const matches =
-          args.checkoutId === request.checkoutId &&
-          args.merchantId === request.merchantId &&
-          args.agent.toLowerCase() === request.agent.toLowerCase() &&
-          args.token.toLowerCase() === request.token.toLowerCase() &&
-          args.amount.toString() === request.amount &&
-          args.treasury.toLowerCase() === request.treasury.toLowerCase() &&
-          args.metadataHash === request.metadataHash;
+          args.checkoutId === expectedRequest.checkoutId &&
+          args.merchantId === expectedRequest.merchantId &&
+          args.agent.toLowerCase() === expectedRequest.agent.toLowerCase() &&
+          args.token.toLowerCase() === expectedRequest.token.toLowerCase() &&
+          args.amount.toString() === expectedRequest.amount &&
+          args.treasury.toLowerCase() === expectedRequest.treasury.toLowerCase() &&
+          args.metadataHash === expectedRequest.metadataHash;
         if (matches) {
           matchedEvent = {
             checkoutId: args.checkoutId,
@@ -572,10 +567,9 @@ async function verifyReceipt(txHash, checkoutRecord) {
     );
   }
 
-  usedTxHashes.add(txHash.toLowerCase());
   return {
-    network: `eip155:${config.chainId}`,
-    chainId: config.chainId,
+    network: `eip155:${expectedChainId}`,
+    chainId: expectedChainId,
     transactionHash: txHash,
     explorerUrl: config.explorerBaseUrl
       ? `${config.explorerBaseUrl.replace(/\/$/, "")}/tx/${txHash}`
@@ -586,7 +580,7 @@ async function verifyReceipt(txHash, checkoutRecord) {
 
 async function completeOrder(payload) {
   const checkoutSessionId = payload.checkoutSessionId;
-  const checkoutRecord = checkouts.get(checkoutSessionId);
+  const checkoutRecord = stateStore.getCheckout(checkoutSessionId);
   if (!checkoutRecord) {
     throw Object.assign(new Error(`Unknown checkoutSessionId: ${checkoutSessionId}`), {
       statusCode: 404,
@@ -607,9 +601,12 @@ async function completeOrder(payload) {
     receipt,
     createdAt: new Date().toISOString(),
   };
-  orders.set(orderId, { order, checkout: checkoutRecord });
-  checkoutRecord.checkout.status = "paid";
-  return { ok: true, order };
+  const orderRecord = stateStore.completeOrder(
+    checkoutSessionId,
+    txHash,
+    order
+  );
+  return { ok: true, order: orderRecord.order };
 }
 
 function orderPage(record) {
@@ -695,6 +692,7 @@ async function route(req, res) {
       treasury: config.merchantTreasury || "_TBD",
       deploymentFile: config.deployment?.filePath || "",
       explorerBaseUrl: config.explorerBaseUrl || "",
+      statePersistent: stateStore.persistent,
     });
   }
 
@@ -710,7 +708,7 @@ async function route(req, res) {
 
   if (req.method === "GET" && url.pathname.startsWith("/demo/orders/")) {
     const orderId = decodeURIComponent(url.pathname.split("/").pop());
-    const record = orders.get(orderId);
+    const record = stateStore.getOrder(orderId);
     if (!record) return jsonResponse(res, 404, { error: "not_found" });
     return htmlResponse(res, 200, orderPage(record));
   }

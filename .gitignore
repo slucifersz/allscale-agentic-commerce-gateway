@@ -32,6 +32,7 @@ typechain-types/
 
 # Generated local deployment state
 deployments/local.json
+.data/
 
 # Editor / OS
 .DS_Store

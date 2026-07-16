@@ -21,7 +21,11 @@ Audience: HashKey Chain On-Chain Horizon hackathon judges. Length: 3-4 minutes.
    - demo agent
    - merchant treasury
 
-3. State the boundary clearly: KYT / KYC are not live; this MVP proves checkout signing, on-chain settlement, and receipt verification. The `mUSDC` / `mUSDT` contracts are HashKey testnet mock tokens deployed for the demo, not official stablecoins.
+3. State the boundary clearly: protocol payloads are demonstrations and KYT /
+   KYC are not wired into the payment path. This MVP proves canonical checkout
+   signing, on-chain settlement, receipt verification, and restart-safe demo
+   order state. `mUSDC` / `mUSDT` are testnet mock tokens; the recorded mainnet
+   deployment uses non-mock bridged `USDC.e`.
 
 ## Opening
 
@@ -29,14 +33,18 @@ Audience: HashKey Chain On-Chain Horizon hackathon judges. Length: 3-4 minutes.
 
 ## Path - Complete Order
 
-1. Choose a protocol, for example `ACP checkout session`.
+1. Choose a protocol-shaped demo, for example `ACP checkout session`.
 2. Choose `Agent Pass`.
-3. Choose `mUSDC` or `mUSDT`.
+3. Choose `mUSDC` / `mUSDT` on testnet, or `USDC.e` with the mainnet configuration.
 4. Click `Generate`.
 
 Say:
 
-> "The gateway has produced a canonical checkout and protocol-shaped payload. More importantly, it created exact payment terms: checkout ID, merchant ID, agent, token, amount, treasury, expiry, and metadata hash. Those terms are signed by the gateway."
+> "The selected protocol changes the demo payload shape; it is not a live
+> protocol client. The gateway has also produced one validated canonical
+> checkout. Its checkout ID, merchant ID, agent, token, amount, treasury,
+> expires-at timestamp, and metadata hash are the exact terms signed by the
+> gateway and used to build calldata."
 
 Point to:
 
@@ -69,14 +77,17 @@ Say:
 | Element | Status |
 |---|---|
 | Protocol payloads | demo implementations |
-| Catalog and orders | in-memory demo state |
+| Catalog | static demo data |
+| Checkouts, orders, tx deduplication | persistent single-process file store |
 | Gateway signature | real EIP-712 signature |
-| Settlement contract | real local/testnet contract |
-| ERC-20 transfer | real contract call using `mUSDC` / `mUSDT` mock token for MVP |
+| Settlement contract | real local/testnet contract plus recorded HashKey mainnet deployment |
+| ERC-20 transfer | real contract call; testnet tokens are mock, recorded mainnet token is non-mock `USDC.e` |
 | Receipt verification | real event matching |
 | KYT / AML | mock / under validation |
 | Primus zkTLS payer verification (identity + mandate attestations) | roadmap / not integrated |
 
 ## Closing
 
-> "The MVP turns the original front-end-only demo into a runnable payment loop. The remaining product work is live KYT/KYC, real merchant persistence, production token configuration, and production wallet UX."
+> "The MVP turns the original front-end-only demo into a runnable payment loop.
+> The remaining product work is real protocol clients, live KYT/KYC, merchant
+> callbacks, a multi-instance production database, and production wallet UX."
