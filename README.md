@@ -2,16 +2,22 @@
 
 > **Verification logic shown here is a demonstration. Live KYT / KYC integration is under validation.**
 
-A hackathon MVP for **HashKey Chain On-Chain Horizon**. The current repo now runs a local end-to-end checkout flow:
+A hackathon MVP for **HashKey Chain On-Chain Horizon**. The repository contains
+a runnable end-to-end checkout flow and a deployed HashKey Chain Mainnet
+`SettlementGateway`:
 
-1. agent protocol request (`ACP` / `AP2` / `x402` / `MPP`)
+1. demo request tagged as `ACP` / `AP2` / `x402` / `MPP`
 2. canonical checkout generation
 3. EIP-712 gateway signature over exact payment terms
 4. `SettlementGateway.pay()` ERC-20 settlement
 5. `CheckoutSettled` receipt verification
 6. demo order creation
 
-KYT / KYC providers are still **not live**. Gate 1 and Gate 2 remain mock/demo concerns; the MVP focus is the payment and receipt-verification loop.
+The runnable path accepts a protocol label and emits protocol-shaped demo
+payloads. It does not connect to real ACP, AP2, x402, or MPP clients. KYT / KYC
+providers are also **not live**, and the mock Gate 1 / Gate 2 functions are not
+wired into `server/demo-api.js`. The implemented focus is canonical checkout
+signing, settlement, receipt verification, and recoverable demo order state.
 
 ## Current Status
 
@@ -19,26 +25,59 @@ KYT / KYC providers are still **not live**. Gate 1 and Gate 2 remain mock/demo c
 |---|---|
 | Frontend MVP console | implemented in `frontend/index.html` |
 | Demo API | implemented in `server/demo-api.js` |
+| Shared canonical checkout | runtime schema and EIP-712 field order in `shared/canonical-checkout.js`; TypeScript declaration alongside it |
 | Catalog / checkout / complete endpoints | implemented |
+| Demo checkout / order / tx-dedup state | atomically persisted for one API process in `.data/demo-state.json` |
 | Settlement contract | implemented in `contracts/SettlementGateway.sol` |
 | Mock ERC-20 for local/testnet MVP | implemented in `contracts/MockERC20.sol`; HashKey testnet has deployed `mUSDC` and `mUSDT` |
 | Receipt verification | implemented by matching `CheckoutSettled` event fields |
 | HashKey testnet deploy script | implemented; requires RPC, deployer key, signer key, and gas |
+| HashKey mainnet deployment | deployed at `0xDF0008D5C6fFb332A4A21a15018954e90f4fae01` with non-mock `USDC.e` configuration |
+| ACP / AP2 / x402 / MPP adapters | interface-level mocks; no protocol client or handshake |
 | Gate 1 KYT / AML | mock only; live integration under validation |
-| Gate 2 Primus zkTLS payer verification (principal identity + payment mandate) | mock/roadmap |
+| Gate 2 Primus zkTLS payer verification (principal identity + payment mandate) | mock/roadmap; no attestation generation or verification |
 
 ## Architecture
 
 ```
-AGENT (ACP / AP2 / x402 / MPP)
-  -> Demo API normalizes to canonical checkout
+DEMO INPUT (protocol label: ACP / AP2 / x402 / MPP)
+  -> Demo API creates and validates one canonical checkout
   -> Gateway signs payment terms
   -> Agent submits SettlementGateway.pay()
   -> Contract checks signature, expiry, replay, spending limit
   -> ERC-20 transferFrom(agent, merchant treasury)
   -> API verifies CheckoutSettled receipt
-  -> Demo order is created
+  -> Demo order + tx claim are atomically persisted
 ```
+
+`router/protocols.ts`, `router/index.ts`, and `router/gates.ts` are a separate
+legacy architecture sketch. They remain explicit mocks and are not imported by
+the runnable API above.
+
+## Canonical Checkout and Compatibility Boundary
+
+The runnable API validates one JSON-safe `CanonicalCheckout` before signing or
+encoding settlement data:
+
+| Field | Runtime representation | Settlement role |
+|---|---|---|
+| `protocol` | `x402`, `acp`, `ap2`, or `mpp` | routing metadata; not signed on-chain |
+| `checkoutId` | `bytes32` hex string | signed; on-chain replay key |
+| `merchantId` | `bytes32` hex string | signed |
+| `agent` | EVM address | signed; must equal `msg.sender` |
+| `token` | EVM address | signed |
+| `amount` | unsigned decimal string in token base units | signed and ABI-encoded as `uint256` |
+| `treasury` | EVM address | signed transfer recipient |
+| `expiresAt` | Unix timestamp in seconds | signed and enforced on-chain |
+| `metadataHash` | `bytes32` hex string | signed and emitted in the receipt event |
+
+`shared/canonical-checkout.js` owns the runtime validator, EIP-712 field order,
+and `pay()` argument order. `server/demo-api.js` derives the EIP-712 value,
+calldata, payment instruction, and receipt expectations from that canonical
+object. Do not rename or reorder the eight signed settlement fields without a
+coordinated contract migration: the deployed contract's `CHECKOUT_TYPEHASH`,
+EIP-712 domain (`AllScale SettlementGateway`, version `1`), `pay()` ABI, and
+`CheckoutSettled` event are compatibility boundaries.
 
 Gate 2 (mock/roadmap) is payer verification via Primus zkTLS: the paying agent presents attestations proving two independent claims about its principal, without revealing who the principal is — (1) identity: the principal has passed KYC at a regulated institution (bring-your-own-KYC; the institution's system is the attested data source); (2) authorization: the principal's own system of record contains a live mandate authorizing this agent for this payment, with a cap covering the amount. AllScale's gateway acts as the verifier of both attestations; the attested data lives in systems AllScale does not control and cannot forge. The spending limit is enforced by the on-chain settlement contract. Primus is not used for spending-limit decisions.
 
@@ -117,9 +156,11 @@ The current HashKey testnet deployment records two MVP test tokens:
 
 These are not official USDC/USDT contracts.
 
-## HashKey Chain Mainnet Deploy
+## HashKey Chain Mainnet Deployment
 
-> **Status: mainnet deployment support is implemented, but the contract has NOT been deployed to mainnet yet.** `deployments/hashkey-mainnet.json` does not exist until a real deployment succeeds; do not fabricate it.
+> **Status: deployed.** The public deployment record is
+> `deployments/hashkey-mainnet.json`. No mock token was deployed or minted on
+> mainnet.
 
 Mainnet parameters:
 
@@ -128,7 +169,10 @@ Mainnet parameters:
 | Chain ID | `177` |
 | RPC | `https://mainnet.hsk.xyz` |
 | Explorer | `https://hsk.blockscout.com` |
-| USDC (bridged) | `0x054ed45810DbBAb8B27668922D110669c9D88D0a` (6 decimals) |
+| USDC.e (bridged) | `0x054ed45810DbBAb8B27668922D110669c9D88D0a` (6 decimals) |
+| SettlementGateway | [`0xDF0008D5C6fFb332A4A21a15018954e90f4fae01`](https://hsk.blockscout.com/address/0xDF0008D5C6fFb332A4A21a15018954e90f4fae01) |
+| Deploy transaction | [`0xafb7e6e542001e14fab6a329590f6f154a75fd1e1d0f477a2c5749e478ed0134`](https://hsk.blockscout.com/tx/0xafb7e6e542001e14fab6a329590f6f154a75fd1e1d0f477a2c5749e478ed0134) |
+| Spending-limit setup | [`0xbb2791d71d4c4480a1dcdb5b11441555d2486aa40f9693efc826d68e6b16d906`](https://hsk.blockscout.com/tx/0xbb2791d71d4c4480a1dcdb5b11441555d2486aa40f9693efc826d68e6b16d906) |
 
 Key rules:
 
@@ -144,13 +188,18 @@ Key rules:
 - Agent ERC-20 approval is bounded (`APPROVAL_TOKEN_UNITS`, default 1 USDC) and disabled by default (`AUTO_APPROVE=false`); unlimited (`MaxUint256`) approvals are never used on mainnet.
 - KYT, KYC, and Primus zkTLS remain mock/roadmap on mainnet exactly as documented in [Verification Boundaries](#verification-boundaries).
 
-Deploy (only after read-only checks pass and you explicitly confirm):
+Deploy a new instance only after read-only checks pass and you explicitly
+confirm:
 
 ```bash
 npm run deploy:hashkey-mainnet
 ```
 
-A successful real deployment writes `deployments/hashkey-mainnet.json` (with `"mock": false` and the real contract address / tx hashes) and sets the demo agent spending limit from `SPENDING_LIMIT_TOKEN_UNITS` (default 1 USDC). The demo API reads that file automatically when `CHAIN_ID=177`, or honors an explicit `DEPLOYMENT_FILE=`.
+The deploy script writes `deployments/hashkey-mainnet.json` with `"mock": false`
+and the resulting public addresses / tx hashes, and sets the demo agent spending
+limit from `SPENDING_LIMIT_TOKEN_UNITS` (default 1 USDC). The demo API reads the
+current record automatically when `CHAIN_ID=177`, or honors an explicit
+`DEPLOYMENT_FILE=`.
 
 ## API Endpoints
 
@@ -172,8 +221,10 @@ database.
 
 ## Verification Boundaries
 
-- **Real in MVP:** contract signature check, expiry, replay protection, cumulative per-agent spending limit, ERC-20 transfer, event-based receipt verification.
-- **Mock in MVP:** protocol ecosystem semantics, merchant callbacks, KYT/KYC, Primus zkTLS, and the deployed `mUSDC` / `mUSDT` test tokens.
+- **Real in the runnable path:** canonical schema validation, EIP-712 signing, contract signature/expiry/replay/limit enforcement, ERC-20 transfer, chain/contract/event receipt matching, tx-hash reuse rejection, and single-process file persistence.
+- **Mock or not wired:** ACP/AP2/x402/MPP client semantics, `router/` adapters, both verification gates, merchant callbacks, and Primus attestation generation/verification.
+- **Network-specific token status:** `mUSDC` / `mUSDT` are mock tokens on testnet; the mainnet deployment record uses non-mock bridged `USDC.e`.
+- **Persistence boundary:** `.data/demo-state.json` survives restart but is not a concurrent multi-instance production database. On-chain `settledCheckouts` remains the authoritative settlement replay protection.
 - **Never fabricate:** contract addresses, tx hashes, explorer links, provider integrations, or stablecoin token addresses.
 
 > **Verification logic shown here is a demonstration. Live KYT / KYC integration is under validation.**

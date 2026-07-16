@@ -14,13 +14,19 @@ Read this before changing the repo.
 |---|---|
 | `frontend/index.html` | MVP console that calls the demo API |
 | `server/demo-api.js` | Node HTTP API for catalog, checkout start, payment completion, receipt verification, and order pages |
+| `server/state-store.js` | atomic single-process file persistence for checkouts, orders, and claimed transaction hashes |
+| `shared/canonical-checkout.js` | runtime canonical schema, EIP-712 field order, and `pay()` argument derivation |
+| `shared/canonical-checkout.d.ts` | TypeScript declaration for the shared runtime schema |
 | `contracts/SettlementGateway.sol` | MVP settlement contract: EIP-712 signature check, expiry, replay protection, spending limit, ERC-20 transfer |
 | `contracts/MockERC20.sol` | mock token for local and MVP testnet demos; current HashKey testnet deployment has `mUSDC` and `mUSDT` |
 | `scripts/deploy.js` | local / HashKey testnet deploy script |
 | `scripts/compile.js` | solc-js compiler helper |
 | `scripts/e2e-demo.js` | endpoint-level smoke test |
+| `scripts/canonical-checkout-test.js` | canonical schema, EIP-712, and ABI compatibility checks |
+| `scripts/state-store-test.js` | persistence, restart recovery, and tx-reuse checks |
 | `test/SettlementGateway.t.sol` | Foundry-style contract tests; may require Foundry solc availability |
 | `deployments/hashkey-testnet.json` | public HashKey deployment record; only fill with real deployed values |
+| `deployments/hashkey-mainnet.json` | public deployed mainnet contract, non-mock USDC.e, and setup transaction record |
 | `deployments/local.json` | generated local deployment record; ignored by git |
 
 ## Run Commands
@@ -29,6 +35,8 @@ Read this before changing the repo.
 npm install
 npm run compile:contracts
 npm run check:js
+npm run test:canonical
+npm run test:state
 ```
 
 Local MVP:
@@ -67,9 +75,12 @@ TOKEN_NAME="Mock USDT" TOKEN_SYMBOL=mUSDT npm run deploy:hashkey-token
 ## Implementation Notes
 
 - `SettlementGateway.pay()` requires `msg.sender == agent`.
+- `CanonicalCheckout` uses `merchantId` and `expiresAt` (not `expiry`), and represents `amount` as a JSON-safe unsigned decimal string. `protocol` is routing metadata; the other eight fields are the signed settlement request.
+- EIP-712 values, `pay()` calldata, payment instructions, and receipt expectations must be derived from `shared/canonical-checkout.js`; do not rebuild parallel checkout shapes in the server.
 - The gateway signature binds `checkoutId`, `merchantId`, `agent`, `token`, `amount`, `treasury`, `expiresAt`, and `metadataHash`.
-- Receipt verification in `server/demo-api.js` accepts a payment only if the transaction succeeded, targeted the configured contract, and emitted a matching `CheckoutSettled` event.
+- Receipt verification in `server/demo-api.js` accepts a payment only if the RPC chain matches the checkout, the transaction succeeded, targeted the checkout's recorded contract, and emitted a field-matching `CheckoutSettled` event.
 - The demo API atomically persists checkout, order, and transaction-deduplication state to `.data/demo-state.json` by default. This is a single-process demo store, not a multi-instance production database.
+- `router/protocols.ts` and both functions in `router/gates.ts` remain mocks. They are not imported by the runnable demo API; do not describe protocol handshakes or verification providers as live.
 - `deployments/local.json` is generated and ignored. Regenerate it whenever Anvil restarts.
 
 ## What Is Still Out Of Scope
@@ -80,4 +91,4 @@ TOKEN_NAME="Mock USDT" TOKEN_SYMBOL=mUSDT npm run deploy:hashkey-token
 - Real merchant callback persistence
 - Production database
 - Production wallet UX
-- Real HashKey stablecoin token configuration unless explicitly supplied
+- Additional production token and network configurations beyond the recorded HashKey mainnet USDC.e deployment
