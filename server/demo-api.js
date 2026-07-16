@@ -7,6 +7,12 @@ const { getArtifact } = require("../scripts/compile");
 const { loadEnv } = require("../scripts/env");
 const { createDemoStateStore } = require("./state-store");
 const {
+  DEMO_GATE_SCENARIOS,
+  disabledVerification,
+  evaluateDemoGates,
+  resolveDemoGateMode,
+} = require("./demo-gates");
+const {
   AGENT_PROTOCOLS,
   CHECKOUT_TYPES,
   parseCanonicalCheckout,
@@ -149,6 +155,7 @@ function appConfig(selectedTokenSymbol) {
     process.env.EXPLORER_BASE_URL ||
     deployment?.explorerBaseUrl ||
     "";
+  const demoGateMode = resolveDemoGateMode(chainId);
 
   return {
     deployment,
@@ -166,6 +173,7 @@ function appConfig(selectedTokenSymbol) {
     demoAgentAddress,
     merchantTreasury,
     explorerBaseUrl,
+    demoGateMode,
     ready:
       Boolean(contractAddress) &&
       Boolean(tokenAddress) &&
@@ -375,6 +383,52 @@ async function startCheckout(payload) {
     metadataHash,
   });
 
+  if (config.demoGateMode === "disabled" && payload.demoScenario != null) {
+    throw Object.assign(
+      new Error(
+        "demoScenario is unavailable because demo verification is disabled"
+      ),
+      { statusCode: 400 }
+    );
+  }
+  const verification =
+    config.demoGateMode === "simulated"
+      ? evaluateDemoGates(String(payload.demoScenario || "pass"))
+      : disabledVerification();
+
+  const checkout = {
+    id,
+    status: verification.decision === "block" ? "blocked" : "ready_for_payment",
+    protocol,
+    checkoutId: canonicalCheckout.checkoutId,
+    merchantCheckoutId: `demo_cart_${product.id}`,
+    totalAmount: amountMinor,
+    currency: "USD",
+    tokenSymbol: config.tokenSymbol,
+    tokenAddress: canonicalCheckout.token,
+    tokenDecimals: config.tokenDecimals,
+    expiresAt: new Date(canonicalCheckout.expiresAt * 1000).toISOString(),
+    lineItems: [lineItem],
+    agent: canonicalCheckout.agent,
+    merchantId: canonicalCheckout.merchantId,
+    metadataHash: canonicalCheckout.metadataHash,
+  };
+
+  if (verification.decision === "block") {
+    const blockedResponse = {
+      mode: "mvp-chain",
+      status: "BLOCKED",
+      merchant,
+      canonicalCheckout,
+      checkout,
+      verification,
+      canAutoPay: false,
+      canComplete: false,
+    };
+    stateStore.putCheckout(id, blockedResponse);
+    return blockedResponse;
+  }
+
   const settlementRequest = settlementRequestFromCheckout(canonicalCheckout);
   const domain = {
     name: "AllScale SettlementGateway",
@@ -395,24 +449,6 @@ async function startCheckout(payload) {
     settlementArgumentsFromCheckout(canonicalCheckout, gatewaySignature)
   );
 
-  const checkout = {
-    id,
-    status: "ready_for_payment",
-    protocol,
-    checkoutId: canonicalCheckout.checkoutId,
-    merchantCheckoutId: `demo_cart_${product.id}`,
-    totalAmount: amountMinor,
-    currency: "USD",
-    tokenSymbol: config.tokenSymbol,
-    tokenAddress: canonicalCheckout.token,
-    tokenDecimals: config.tokenDecimals,
-    expiresAt: new Date(canonicalCheckout.expiresAt * 1000).toISOString(),
-    lineItems: [lineItem],
-    agent: canonicalCheckout.agent,
-    merchantId: canonicalCheckout.merchantId,
-    metadataHash: canonicalCheckout.metadataHash,
-  };
-
   const paymentInstruction = {
     chainId: config.chainId,
     network: `eip155:${config.chainId}`,
@@ -428,12 +464,15 @@ async function startCheckout(payload) {
 
   const response = {
     mode: "mvp-chain",
+    status: "READY_FOR_PAYMENT",
     merchant,
     canonicalCheckout,
     checkout,
+    verification,
     paymentInstruction,
     protocolPayload: protocolPayload(protocol, checkout, paymentInstruction),
     canAutoPay: config.canAutoPay,
+    canComplete: true,
   };
   stateStore.putCheckout(id, response);
   return response;
@@ -587,6 +626,19 @@ async function completeOrder(payload) {
     });
   }
 
+  if (
+    checkoutRecord.checkout?.status !== "ready_for_payment" ||
+    !checkoutRecord.paymentInstruction?.calldata ||
+    !checkoutRecord.paymentInstruction?.gatewaySignature
+  ) {
+    throw Object.assign(
+      new Error(
+        "Checkout is blocked or has no signed payment instruction; settlement is not allowed"
+      ),
+      { statusCode: 409 }
+    );
+  }
+
   const txHash = payload.transactionHash || (await submitPayment(checkoutRecord));
   const receipt = await verifyReceipt(txHash, checkoutRecord);
   const orderId = `ord_${checkoutSessionId.slice(-12).replace(/[^a-zA-Z0-9]/g, "")}`;
@@ -674,6 +726,13 @@ async function route(req, res) {
     return jsonResponse(res, 200, {
       ready: config.ready,
       canAutoPay: config.canAutoPay,
+      demoGateMode: config.demoGateMode,
+      demoGateScenarios:
+        config.demoGateMode === "simulated" ? DEMO_GATE_SCENARIOS : [],
+      verificationDisclaimer:
+        config.demoGateMode === "simulated"
+          ? "SIMULATED DISPLAY ONLY: no request is sent to BlockSec or Primus."
+          : "Verification gates are disabled; no live BlockSec or Primus integration exists.",
       chainId: config.chainId,
       mainnetDeploymentMissing: config.mainnetDeploymentMissing,
       ...(config.mainnetDeploymentMissing

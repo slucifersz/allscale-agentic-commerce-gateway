@@ -397,6 +397,8 @@ html:not(.js) .tab-panel{margin-bottom:40px}
 .rc-kv .rk{color:var(--muted-2);flex:none}
 .rc-kv .rv{font-family:var(--mono);color:#E6E8EB;text-align:right;word-break:break-all}
 .rc-kv .rv.green{color:var(--mint)}
+.rc-kv .rv.red{color:var(--red)}
+.field .field-note{font-size:11.5px;color:var(--muted-2);margin-top:7px;line-height:1.5}
 .addr{cursor:pointer;border-bottom:1px dotted var(--muted-2)}
 .progress5{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
 .progress5 .pstep{
@@ -717,7 +719,7 @@ footer{border-top:1px solid var(--border-soft);padding:64px 0 80px;margin-top:40
         <span class="g-eyebrow">GATE 1</span>
         <h3>Fund-source screening</h3>
         <p class="g-lead">Screens where the money came from — before it settles.</p>
-        <p>Built on AllScale's built-in KYT (BlockSec). Every incoming payment's source address is checked against high-risk signals — mixers, sanctioned addresses, addresses with recent exposure to stolen or laundered funds.</p>
+        <p>The demo models an intended AllScale KYT (BlockSec-backed) check against high-risk signals. This repository does not call BlockSec; its runnable examples return explicit simulated results.</p>
         <p class="g-checks">Checks: source reputation · sanctions exposure · blocklist match</p>
         <div class="g-badges"><span class="pill pill-green">KYT · MOAT</span></div>
       </div>
@@ -725,7 +727,7 @@ footer{border-top:1px solid var(--border-soft);padding:64px 0 80px;margin-top:40
         <span class="g-eyebrow">GATE 2</span>
         <h3>Payer verification: identity + mandate</h3>
         <p class="g-lead">Proves the payer is authorized — without revealing who they are.</p>
-        <p>The paying agent presents two Primus zkTLS attestations: one proving its principal passed KYC at a regulated institution, another proving the principal's own system of record holds a live mandate authorizing this exact payment. AllScale verifies both; the attested data lives in systems AllScale does not control.</p>
+        <p>The intended live flow uses two Primus zkTLS attestations: one for principal KYC and one for a live payment mandate. This repository does not generate or verify Primus attestations; its runnable examples return explicit simulated results.</p>
         <p class="g-checks">Checks: principal KYC attestation · live payment mandate · selective disclosure</p>
         <div class="g-badges"><span class="pill pill-green">AUTH</span><span class="pill pill-amber">ROADMAP</span></div>
       </div>
@@ -937,7 +939,7 @@ footer{border-top:1px solid var(--border-soft);padding:64px 0 80px;margin-top:40
 <section id="live">
   <div class="wrap">
     <div class="eyebrow">Live on-chain settlement</div>
-    <h2 class="sec-title">Not just a simulation — live on HashKey mainnet.</h2>
+    <h2 class="sec-title">Real settlement path — verification examples stay simulated.</h2>
 
     <!-- fallback card (shown when backend is unreachable) -->
     <div class="live-fallback" id="liveFallback" style="display:none">
@@ -976,6 +978,15 @@ footer{border-top:1px solid var(--border-soft);padding:64px 0 80px;margin-top:40
             <label for="lAmount">Amount, USD cents</label>
             <input id="lAmount" type="number" min="1" value="0">
           </div>
+          <div class="field" id="lScenarioField">
+            <label for="lScenario">Verification example</label>
+            <select id="lScenario">
+              <option value="pass">Pass — BlockSec 已检查 / Primus 已验证</option>
+              <option value="block_kyt">Blocked — simulated KYT risk</option>
+              <option value="block_authorization">Blocked — simulated payer authorization failure</option>
+            </select>
+            <p class="field-note" id="lScenarioNote">模拟展示：不会向 BlockSec 或 Primus 发送请求。</p>
+          </div>
           <div style="display:flex;gap:10px">
             <button class="btn btn-primary" id="lGenerate" style="flex:1">Generate</button>
             <button class="btn btn-outline" id="lComplete" style="flex:1" disabled>Complete</button>
@@ -989,6 +1000,10 @@ footer{border-top:1px solid var(--border-soft);padding:64px 0 80px;margin-top:40
             <div id="lDeployment"><div class="placeholder">Loading configuration…</div></div>
           </div>
           <div class="result-card">
+            <div class="rc-title">Verification result</div>
+            <div id="lVerification"><div class="placeholder">Generate a checkout to see the simulated gate result.</div></div>
+          </div>
+          <div class="result-card">
             <div class="rc-title">Payment instruction</div>
             <div id="lInstruction"><div class="placeholder">Generate a checkout to see the signed payment instruction.</div></div>
           </div>
@@ -1000,7 +1015,7 @@ footer{border-top:1px solid var(--border-soft);padding:64px 0 80px;margin-top:40
             <div class="rc-title">MVP flow</div>
             <div class="progress5" id="lProgress">
               <div class="pstep" data-p="1"><span class="pn">1</span>Agent request</div>
-              <div class="pstep" data-p="2"><span class="pn">2</span>Gateway signs</div>
+              <div class="pstep" data-p="2"><span class="pn">2</span>Verify &amp; sign</div>
               <div class="pstep" data-p="3"><span class="pn">3</span>Chain payment</div>
               <div class="pstep" data-p="4"><span class="pn">4</span>Receipt check</div>
               <div class="pstep" data-p="5"><span class="pn">5</span>Order created</div>
@@ -1251,7 +1266,8 @@ document.documentElement.classList.add('js');
     var row = document.createElement('div');
     row.className = 'rc-kv';
     var kEl = document.createElement('span'); kEl.className = 'rk'; kEl.textContent = k;
-    var vEl = document.createElement('span'); vEl.className = 'rv' + (opts.green ? ' green' : '');
+    var vEl = document.createElement('span');
+    vEl.className = 'rv' + (opts.green ? ' green' : '') + (opts.red ? ' red' : '');
     if(opts.link){
       var a = document.createElement('a'); a.href = opts.link; a.target = '_blank'; a.rel = 'noopener';
       a.textContent = v; vEl.appendChild(a);
@@ -1301,6 +1317,7 @@ document.documentElement.classList.add('js');
     state.config = cfg;
     appEl.style.display = '';
     renderDeployment(cfg);
+    configureVerification(cfg);
     populateTokens(cfg);
     return fetch('/demo/catalog').then(function(r){ return r.json(); }).then(populateCatalog).catch(function(){});
   }).catch(function(){
@@ -1313,12 +1330,44 @@ document.documentElement.classList.add('js');
       kvRow('agent', cfg.agent, {truncate:true}),
       kvRow('treasury', cfg.treasury, {truncate:true}),
       kvRow('chain', (cfg.chainId === 177 ? 'HashKey mainnet' : cfg.chainId === 133 ? 'HashKey testnet' : 'local chain') + ' · ' + cfg.chainId),
-      kvRow('auto-pay', cfg.canAutoPay ? 'enabled' : 'disabled', {green: !!cfg.canAutoPay})
+      kvRow('auto-pay', cfg.canAutoPay ? 'enabled' : 'disabled', {green: !!cfg.canAutoPay}),
+      kvRow('demo gates', cfg.demoGateMode || 'disabled')
     ];
     (cfg.tokens || []).forEach(function(t){
       rows.push(kvRow(t.symbol + (t.mock ? ' (test)' : ''), t.address, {truncate:true}));
     });
     fillCard('lDeployment', rows);
+  }
+  function configureVerification(cfg){
+    var sel = document.getElementById('lScenario');
+    var note = document.getElementById('lScenarioNote');
+    if(cfg.demoGateMode === 'simulated'){
+      sel.disabled = false;
+      note.textContent = '模拟展示：不会向 BlockSec 或 Primus 发送请求。';
+      return;
+    }
+    sel.innerHTML = '<option value="">Disabled — no live provider integration</option>';
+    sel.disabled = true;
+    note.textContent = 'Verification gates are not run; no live BlockSec or Primus integration exists.';
+  }
+  function renderVerification(verification){
+    verification = verification || {};
+    var rows = [
+      kvRow('mode', verification.mode || 'unknown'),
+      kvRow('decision', verification.decision || 'unknown', {
+        green: verification.decision === 'allow',
+        red: verification.decision === 'block'
+      })
+    ];
+    (verification.results || []).forEach(function(result){
+      rows.push(kvRow(result.gate, result.displayText || result.status, {
+        green: result.status === 'passed',
+        red: result.status === 'blocked'
+      }));
+    });
+    rows.push(kvRow('provider call', verification.providerConnected ? 'connected' : 'not connected'));
+    rows.push(kvRow('disclaimer', verification.disclaimer || '—'));
+    fillCard('lVerification', rows);
   }
   function populateTokens(cfg){
     var sel = document.getElementById('lToken');
@@ -1352,6 +1401,7 @@ document.documentElement.classList.add('js');
   /* --- Generate: POST /demo/api/start --- */
   genBtn.addEventListener('click', function(){
     genBtn.disabled = true; comBtn.disabled = true;
+    state.checkout = null;
     setStatus('Generating checkout...');
     setProgress(1);
     var body = {
@@ -1360,6 +1410,9 @@ document.documentElement.classList.add('js');
       tokenSymbol: document.getElementById('lToken').value,
       amountMinor: parseInt(document.getElementById('lAmount').value, 10) || 0
     };
+    if(state.config && state.config.demoGateMode === 'simulated'){
+      body.demoScenario = document.getElementById('lScenario').value;
+    }
     fetch('/demo/api/start', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
@@ -1369,8 +1422,18 @@ document.documentElement.classList.add('js');
     }).then(function(r){
       if(!r.ok){ throw new Error(errMsg(r.data, 'Checkout generation failed.')); }
       state.checkout = r.data;
+      renderVerification(r.data.verification);
       var pi = r.data.paymentInstruction || {};
       var co = r.data.checkout || {};
+      if(r.data.status === 'BLOCKED'){
+        fillCard('lInstruction', [
+          kvRow('status', 'BLOCKED before signature', {red:true}),
+          kvRow('payment instruction', 'not issued')
+        ]);
+        setProgress(1);
+        setStatus('Blocked by the simulated verification example — no signature or calldata was issued.', true);
+        return;
+      }
       var rows = [
         kvRow('checkout_id', co.checkoutId || co.id || '—', {truncate:true}),
         kvRow('protocol', co.protocol || body.protocol),
@@ -1388,6 +1451,7 @@ document.documentElement.classList.add('js');
       setStatus('Checkout generated — payment instruction signed. Ready to complete.');
       comBtn.disabled = false;
     }).catch(function(e){
+      state.checkout = null;
       setStatus(e.message || 'Checkout generation failed.', true);
       setProgress(0);
     }).finally(function(){

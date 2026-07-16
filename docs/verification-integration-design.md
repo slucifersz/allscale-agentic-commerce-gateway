@@ -1,8 +1,9 @@
 # Verification Gates — Live Integration Design
 
-> **Status: design document.** Nothing described here is implemented or live.
-> Both verification gates in this repository are mock handlers
-> (`router/gates.ts`). This document specifies how the mocks would be
+> **Status: live-integration design document.** No provider integration
+> described here is implemented or live. The repository contains legacy mock
+> handlers (`router/gates.ts`) plus a runnable deterministic scenario simulator
+> (`server/demo-gates.js`). This document specifies how those mocks would be
 > replaced by real integrations, so the path from demonstration to
 > production is explicit.
 
@@ -11,27 +12,32 @@
 
 ## Summary
 
-In the current repository, both gates are synchronous mocks in the legacy
-TypeScript router. `server/demo-api.js`, which implements the runnable payment
-path, does not import that router and therefore does not execute either gate.
-The interfaces illustrate the intended boundary, but a live integration also
-requires async orchestration, fail-closed error handling, a non-literal
-`GateResult.mock` type, and explicit wiring into the runnable path.
+The legacy TypeScript router still contains two synchronous substring mocks and
+is not imported by `server/demo-api.js`. Separately, the runnable API now calls
+`server/demo-gates.js` before signing on non-mainnet demo networks. That module
+supports `pass`, `block_kyt`, and `block_authorization`; it uses only the chosen
+scenario and makes no external request. A blocked result is persisted without a
+signature, calldata, or protocol payload, and `/demo/api/complete` rejects it.
+
+The runnable response deliberately includes `mock: true`,
+`providerConnected: false`, and a no-provider-call disclaimer. Display strings
+such as `BlockSec 已检查` and `Primus 已验证` are presentation labels, not evidence
+of provider execution. Simulated mode is rejected on HashKey mainnet.
 
 ---
 
 ## 1. Current state (what the mocks do today)
 
-| Gate | Check | Provider (architectural intent) | Current implementation |
-|------|-------|--------------------------------|------------------------|
-| Gate 1 | KYT / AML fund-source screening | AllScale KYT service (intended BlockSec-backed integration; BlockSec KYT is used in AllScale's production products, but no integration exists in this repo) | `allScaleKytGate()` — flags a checkout if the agent string contains `suspicious`; no external call |
-| Gate 2 | Payer verification: principal identity + payment mandate | Primus (zkTLS) | `primusKycGate()` — same `suspicious` substring heuristic; no attestation is generated or verified |
+| Gate | Check | Provider (architectural intent) | Legacy router mock | Runnable API simulator |
+|------|-------|---------------------------------|--------------------|------------------------|
+| Gate 1 | KYT / AML fund-source screening | AllScale KYT service (intended BlockSec-backed integration; BlockSec KYT is used in AllScale's production products, but no integration exists in this repo) | `allScaleKytGate()` flags an agent string containing `suspicious` | `block_kyt` deterministically blocks; no risk data or external call |
+| Gate 2 | Payer verification: principal identity + payment mandate | Primus (zkTLS) | `primusKycGate()` uses the same substring heuristic | `block_authorization` deterministically blocks; no attestation or external call |
 
-Both functions return a `GateResult` (`router/types.ts`). They run before the
-mock outcome in `router/index.ts`, but they do **not** run before settlement in
-`server/demo-api.js`. Consequently, the current runnable payment API does not
-provide KYT/KYC blocking. The intended live sequencing is verify first and
-settle only after both gates pass.
+The legacy functions return a `GateResult` (`router/types.ts`) and only affect
+the legacy mock outcome. The runnable simulator does provide an executable
+allow/block sequence before signing, but it does **not** provide KYT/KYC
+screening. The intended live sequencing remains verify first and settle only
+after both real gates pass.
 
 The shared canonical input available for future wiring is:
 
@@ -228,13 +234,13 @@ changes are:
   current literal `true` to a boolean or a mock/live discriminated union.
 - Make the provider functions async and add timeouts, authenticated provider
   calls, response validation, and fail-closed error mapping.
-- Make `routeAgentPayment()` async or introduce equivalent orchestration in
-  `server/demo-api.js`; the current synchronous caller does not tolerate
-  promises.
-- Run both gates before returning payment calldata or submitting auto-payment,
-  and include auditable gate results in the API response.
-- Update the frontend to consume those results; it does not currently consume
-  `GateResult` from the TypeScript router.
+- Replace the deterministic scenario evaluation in `server/demo-api.js` with
+  async, fail-closed provider orchestration while preserving the pre-signature
+  and pre-auto-payment boundary.
+- Replace simulated response results with auditable provider results and
+  evidence references.
+- Update the frontend to distinguish each independently enabled live provider;
+  it currently consumes only the runnable simulator result.
 - Change `mock: true` to `mock: false` independently only after each live
   provider path is implemented and tested.
 
@@ -263,8 +269,9 @@ design here.
 
 ## 7. Honest boundary
 
-- This is a design document. No BlockSec or Primus integration exists in
-  this repository.
+- This is a live-integration design document. No BlockSec or Primus integration
+  exists in this repository; the runnable allow/block examples are deterministic
+  simulations only.
 - Provider names describe architectural intent. BlockSec KYT is used in
   AllScale's existing production products; no BlockSec or Primus
   integration has been established for this demo.
