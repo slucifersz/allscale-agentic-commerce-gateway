@@ -14,6 +14,7 @@ Read this before changing the repo.
 |---|---|
 | `frontend/index.html` | MVP console that calls the demo API |
 | `server/demo-api.js` | Node HTTP API for catalog, checkout start, payment completion, receipt verification, and order pages |
+| `server/demo-gates.js` | deterministic non-mainnet allow/block examples; display-only BlockSec/Primus labels with no provider calls |
 | `server/state-store.js` | atomic single-process file persistence for checkouts, orders, and claimed transaction hashes |
 | `shared/canonical-checkout.js` | runtime canonical schema, EIP-712 field order, and `pay()` argument derivation |
 | `shared/canonical-checkout.d.ts` | TypeScript declaration for the shared runtime schema |
@@ -37,6 +38,7 @@ npm run compile:contracts
 npm run check:js
 npm run test:canonical
 npm run test:state
+npm run test:gates
 ```
 
 Local MVP:
@@ -81,6 +83,9 @@ TOKEN_NAME="Mock USDT" TOKEN_SYMBOL=mUSDT npm run deploy:hashkey-token
 - Receipt verification in `server/demo-api.js` accepts a payment only if the RPC chain matches the checkout, the transaction succeeded, targeted the checkout's recorded contract, and emitted a field-matching `CheckoutSettled` event.
 - The demo API atomically persists checkout, order, and transaction-deduplication state to `.data/demo-state.json` by default. This is a single-process demo store, not a multi-instance production database.
 - `router/protocols.ts` and both functions in `router/gates.ts` remain mocks. They are not imported by the runnable demo API; do not describe protocol handshakes or verification providers as live.
+- `server/demo-gates.js` is wired into the runnable API before signing, but it is still a deterministic simulator. Preserve `mock: true`, `providerConnected: false`, and the provider-call disclaimer until real integrations exist.
+- A blocked checkout must never contain `paymentInstruction`, gateway signature, calldata, or protocol payload, and `/demo/api/complete` must reject it.
+- `DEMO_GATE_MODE=simulated` is forbidden on HashKey mainnet (chain ID `177`). Mainnet must not turn simulated passes into real settlement authorization.
 - `deployments/local.json` is generated and ignored. Regenerate it whenever Anvil restarts.
 
 ## What Is Still Out Of Scope

@@ -21,8 +21,9 @@ Audience: HashKey Chain On-Chain Horizon hackathon judges. Length: 3-4 minutes.
    - demo agent
    - merchant treasury
 
-3. State the boundary clearly: protocol payloads are demonstrations and KYT /
-   KYC are not wired into the payment path. This MVP proves canonical checkout
+3. State the boundary clearly: protocol payloads are demonstrations and the
+   runnable Gate results are deterministic simulations, not BlockSec or Primus
+   calls. This MVP proves canonical checkout
    signing, on-chain settlement, receipt verification, and restart-safe demo
    order state. `mUSDC` / `mUSDT` are testnet mock tokens; the recorded mainnet
    deployment uses non-mock bridged `USDC.e`.
@@ -36,12 +37,14 @@ Audience: HashKey Chain On-Chain Horizon hackathon judges. Length: 3-4 minutes.
 1. Choose a protocol-shaped demo, for example `ACP checkout session`.
 2. Choose `Agent Pass`.
 3. Choose `mUSDC` / `mUSDT` on testnet, or `USDC.e` with the mainnet configuration.
-4. Click `Generate`.
+4. On a local/testnet demo, choose `Pass — BlockSec 已检查 / Primus 已验证`.
+5. Click `Generate`.
 
 Say:
 
 > "The selected protocol changes the demo payload shape; it is not a live
-> protocol client. The gateway has also produced one validated canonical
+> protocol client. The BlockSec and Primus labels are simulated display results;
+> no request was sent to either provider. The gateway has also produced one validated canonical
 > checkout. Its checkout ID, merchant ID, agent, token, amount, treasury,
 > expires-at timestamp, and metadata hash are the exact terms signed by the
 > gateway and used to build calldata."
@@ -54,23 +57,38 @@ Point to:
 - gateway signature
 - calldata
 
-4. Click `Complete`.
+6. Click `Complete`.
 
 Say:
 
 > "For the MVP, the demo agent submits `SettlementGateway.pay()`. The contract checks the gateway signature, expiry, replay status, and the agent spending limit. Then it transfers ERC-20 funds directly from the agent to the merchant treasury."
 
-5. Wait for `Order completed and receipt verified`.
+7. Wait for `Order completed and receipt verified`.
 
 Say:
 
 > "The API does not simply trust a tx hash. It reads the receipt, finds the `CheckoutSettled` event, and checks that checkout ID, merchant ID, agent, token, amount, treasury, and metadata hash all match the original checkout."
 
-6. Open the order link.
+8. Open the order link.
 
 Say:
 
 > "This is the order page backed by verified on-chain payment evidence."
+
+## Path - Blocked Before Signing
+
+1. Run the API on local/testnet with `DEMO_GATE_MODE=simulated`.
+2. Choose `Blocked — simulated KYT risk` or
+   `Blocked — simulated payer authorization failure`.
+3. Click `Generate`.
+
+Point out that the API returned `BLOCKED`, the UI did not enable `Complete`, and
+the response contains no payment instruction, gateway signature, calldata, or
+protocol payload. Say explicitly:
+
+> "This proves the control-flow boundary, not a provider integration. The result
+> is deterministic demo data. `BlockSec 已检查` and `Primus 已验证` are display
+> labels only; the response says `mock: true` and `providerConnected: false`."
 
 ## Mock vs Real
 
@@ -83,8 +101,8 @@ Say:
 | Settlement contract | real local/testnet contract plus recorded HashKey mainnet deployment |
 | ERC-20 transfer | real contract call; testnet tokens are mock, recorded mainnet token is non-mock `USDC.e` |
 | Receipt verification | real event matching |
-| KYT / AML | mock / under validation |
-| Primus zkTLS payer verification (identity + mandate attestations) | roadmap / not integrated |
+| KYT / AML | runnable deterministic pass/block simulator; no BlockSec request |
+| Primus zkTLS payer verification (identity + mandate attestations) | runnable deterministic pass/block simulator; no attestation or Primus request |
 
 ## Closing
 
