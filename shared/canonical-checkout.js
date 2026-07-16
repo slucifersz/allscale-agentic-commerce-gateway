@@ -78,9 +78,36 @@ function parseCanonicalCheckout(value) {
   });
 }
 
+/** Return the exact ordered fields signed by EIP-712 and passed to pay(). */
+function settlementRequestFromCheckout(value) {
+  const checkout = parseCanonicalCheckout(value);
+  return Object.freeze(
+    Object.fromEntries(
+      SETTLEMENT_CHECKOUT_FIELDS.map(({ name }) => [name, checkout[name]])
+    )
+  );
+}
+
+/** Return SettlementGateway.pay() arguments in ABI order. */
+function settlementArgumentsFromCheckout(value, gatewaySignature) {
+  if (
+    typeof gatewaySignature !== "string" ||
+    !/^0x(?:[0-9a-fA-F]{2})+$/.test(gatewaySignature)
+  ) {
+    throw new TypeError("gatewaySignature must be a hex string");
+  }
+  const request = settlementRequestFromCheckout(value);
+  return Object.freeze([
+    ...SETTLEMENT_CHECKOUT_FIELDS.map(({ name }) => request[name]),
+    gatewaySignature,
+  ]);
+}
+
 module.exports = {
   AGENT_PROTOCOLS,
   CHECKOUT_TYPES,
   SETTLEMENT_CHECKOUT_FIELDS,
   parseCanonicalCheckout,
+  settlementArgumentsFromCheckout,
+  settlementRequestFromCheckout,
 };

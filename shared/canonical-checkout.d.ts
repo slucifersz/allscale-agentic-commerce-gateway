@@ -25,3 +25,10 @@ export const CHECKOUT_TYPES: Readonly<{
 }>;
 
 export function parseCanonicalCheckout(value: unknown): Readonly<CanonicalCheckout>;
+export function settlementRequestFromCheckout(
+  value: unknown
+): Readonly<Omit<CanonicalCheckout, "protocol">>;
+export function settlementArgumentsFromCheckout(
+  value: unknown,
+  gatewaySignature: string
+): readonly [...Array<string | number>, string];

@@ -1,8 +1,11 @@
 const assert = require("assert/strict");
+const { ethers } = require("ethers");
 const {
   AGENT_PROTOCOLS,
   CHECKOUT_TYPES,
   parseCanonicalCheckout,
+  settlementArgumentsFromCheckout,
+  settlementRequestFromCheckout,
 } = require("../shared/canonical-checkout");
 
 const input = {
@@ -38,6 +41,41 @@ assert.deepEqual(
     "metadataHash",
   ]
 );
+
+const request = settlementRequestFromCheckout(checkout);
+assert.equal("protocol" in request, false);
+assert.deepEqual(
+  Object.keys(request),
+  CHECKOUT_TYPES.Checkout.map(({ name }) => name)
+);
+const signature = `0x${"77".repeat(65)}`;
+const settlementArguments = settlementArgumentsFromCheckout(checkout, signature);
+assert.deepEqual(
+  settlementArguments,
+  [...Object.values(request), signature]
+);
+
+const domain = {
+  name: "AllScale SettlementGateway",
+  version: "1",
+  chainId: 177,
+  verifyingContract: `0x${"88".repeat(20)}`,
+};
+assert.match(
+  ethers.TypedDataEncoder.hash(domain, CHECKOUT_TYPES, request),
+  /^0x[0-9a-f]{64}$/
+);
+
+const iface = new ethers.Interface([
+  "function pay(bytes32 checkoutId, bytes32 merchantId, address agent, address token, uint256 amount, address treasury, uint256 expiresAt, bytes32 metadataHash, bytes gatewaySignature)",
+]);
+const calldata = iface.encodeFunctionData("pay", settlementArguments);
+const decoded = iface.decodeFunctionData("pay", calldata);
+assert.deepEqual(
+  CHECKOUT_TYPES.Checkout.map(({ name }) => decoded[name].toString()),
+  CHECKOUT_TYPES.Checkout.map(({ name }) => request[name].toString())
+);
+assert.equal(decoded.gatewaySignature, signature);
 
 assert.throws(
   () => parseCanonicalCheckout({ ...input, checkoutId: "chk_demo" }),
