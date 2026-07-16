@@ -1,29 +1,13 @@
 /**
- * Canonical checkout — the single normalized shape every agent payment
- * protocol (x402 / ACP / AP2 / MPP) is routed into before verification
- * and settlement.
+ * Canonical checkout types are declared beside their runtime validator so the
+ * runnable API and the TypeScript router share one public schema boundary.
  */
+import type {
+  AgentProtocol,
+  CanonicalCheckout,
+} from "../shared/canonical-checkout";
 
-export type AgentProtocol = "x402" | "ACP" | "AP2" | "MPP";
-
-export interface CanonicalCheckout {
-  /** Canonical checkout identifier assigned by the router. */
-  checkoutId: string;
-  /** Which agent protocol originated this payment. */
-  protocol: AgentProtocol;
-  /** Payer agent identifier / address (demo: mock value). */
-  agent: string;
-  /** Settlement token (ERC-20 address on HashKey Chain testnet — _TBD). */
-  token: string;
-  /** Amount in the token's smallest unit. */
-  amount: bigint;
-  /** Merchant treasury address (demo: mock value). */
-  treasury: string;
-  /** Unix timestamp after which the checkout is no longer settleable. */
-  expiry: number;
-  /** Hash of the checkout metadata (order details, agent context, etc.). */
-  metadataHash: string;
-}
+export type { AgentProtocol, CanonicalCheckout };
 
 /** Result of one verification gate. */
 export interface GateResult {

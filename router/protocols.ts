@@ -14,7 +14,7 @@ export interface RawAgentPaymentRequest {
   protocol: AgentProtocol;
   agent: string;
   token: string;
-  amount: bigint;
+  amount: bigint | string;
   treasury: string;
   /** Protocol-specific payload (opaque to the router core). */
   payload: Record<string, unknown>;
@@ -27,11 +27,14 @@ export interface ProtocolAdapter {
 }
 
 // MOCK — deterministic demo hash, not a real cryptographic commitment.
-function mockMetadataHash(request: RawAgentPaymentRequest): string {
-  const seed = `${request.protocol}:${request.agent}:${request.amount}`;
+function mockBytes32(seed: string): string {
   let h = 0;
   for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return "0x" + h.toString(16).padStart(64, "0");
+}
+
+function mockMetadataHash(request: RawAgentPaymentRequest): string {
+  return mockBytes32(`${request.protocol}:${request.agent}:${request.amount}`);
 }
 
 function makeAdapter(protocol: AgentProtocol): ProtocolAdapter {
@@ -40,13 +43,16 @@ function makeAdapter(protocol: AgentProtocol): ProtocolAdapter {
     // MOCK — normalization only; no real protocol handshake happens here.
     normalize(request: RawAgentPaymentRequest): CanonicalCheckout {
       return {
-        checkoutId: `chk_${protocol.toLowerCase()}_${request.agent.slice(-6)}`,
+        checkoutId: mockBytes32(
+          `checkout:${protocol}:${request.agent}:${request.amount}`
+        ),
+        merchantId: mockBytes32(`merchant:${request.treasury}`),
         protocol,
         agent: request.agent,
         token: request.token,
-        amount: request.amount,
+        amount: request.amount.toString(),
         treasury: request.treasury,
-        expiry: Math.floor(Date.now() / 1000) + 15 * 60,
+        expiresAt: Math.floor(Date.now() / 1000) + 15 * 60,
         metadataHash: mockMetadataHash(request),
       };
     },
@@ -55,7 +61,7 @@ function makeAdapter(protocol: AgentProtocol): ProtocolAdapter {
 
 export const adapters: Record<AgentProtocol, ProtocolAdapter> = {
   x402: makeAdapter("x402"),
-  ACP: makeAdapter("ACP"),
-  AP2: makeAdapter("AP2"),
-  MPP: makeAdapter("MPP"),
+  acp: makeAdapter("acp"),
+  ap2: makeAdapter("ap2"),
+  mpp: makeAdapter("mpp"),
 };

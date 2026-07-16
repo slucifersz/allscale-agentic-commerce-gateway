@@ -5,6 +5,11 @@ const { randomUUID } = require("crypto");
 const { ethers } = require("ethers");
 const { getArtifact } = require("../scripts/compile");
 const { loadEnv } = require("../scripts/env");
+const {
+  AGENT_PROTOCOLS,
+  CHECKOUT_TYPES,
+  parseCanonicalCheckout,
+} = require("../shared/canonical-checkout");
 
 loadEnv();
 
@@ -12,19 +17,6 @@ const PORT = Number(process.env.PORT || "8787");
 const ROOT = process.cwd();
 const FRONTEND_FILE = path.join(ROOT, "frontend", "index.html");
 const SETTLEMENT_ABI = getArtifact("SettlementGateway").abi;
-
-const CHECKOUT_TYPES = {
-  Checkout: [
-    { name: "checkoutId", type: "bytes32" },
-    { name: "merchantId", type: "bytes32" },
-    { name: "agent", type: "address" },
-    { name: "token", type: "address" },
-    { name: "amount", type: "uint256" },
-    { name: "treasury", type: "address" },
-    { name: "expiresAt", type: "uint256" },
-    { name: "metadataHash", type: "bytes32" },
-  ],
-};
 
 const CATALOG = [
   {
@@ -344,7 +336,7 @@ async function startCheckout(payload) {
 
   const product = findProduct(payload.productId || CATALOG[0].id);
   const protocol = String(payload.protocol || "acp").toLowerCase();
-  if (!["acp", "ap2", "x402", "mpp"].includes(protocol)) {
+  if (!AGENT_PROTOCOLS.includes(protocol)) {
     throw Object.assign(new Error(`Unsupported protocol: ${protocol}`), {
       statusCode: 400,
     });
@@ -370,6 +362,18 @@ async function startCheckout(payload) {
     metadata: product.metadata,
   };
   const metadataHash = metadataHashFor({ product, protocol, amountMinor, id });
+
+  const canonicalCheckout = parseCanonicalCheckout({
+    protocol,
+    checkoutId,
+    merchantId,
+    agent: config.demoAgentAddress,
+    token: config.tokenAddress,
+    amount,
+    treasury: config.merchantTreasury,
+    expiresAt,
+    metadataHash,
+  });
 
   const value = {
     checkoutId,
@@ -450,6 +454,7 @@ async function startCheckout(payload) {
   const response = {
     mode: "mvp-chain",
     merchant,
+    canonicalCheckout,
     checkout,
     paymentInstruction,
     protocolPayload: protocolPayload(protocol, checkout, paymentInstruction),
