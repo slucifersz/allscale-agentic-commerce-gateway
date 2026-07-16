@@ -161,12 +161,19 @@ A successful real deployment writes `deployments/hashkey-mainnet.json` (with `"m
 | `GET /demo/catalog` | demo products |
 | `POST /demo/api/start` | create checkout, signature, calldata, protocol payload |
 | `POST /demo/api/complete` | submit demo payment if configured, or verify provided tx hash |
-| `GET /demo/orders/:id` | demo order receipt page |
+| `GET /demo/orders/:id` | persisted demo order receipt page |
+
+The demo API atomically persists checkouts, completed orders, and claimed
+transaction hashes to `.data/demo-state.json` by default, so they survive a
+process restart. Set `DEMO_STATE_FILE` to another path, or to `:memory:` for
+isolated tests. This file store is intended for a single API process; a
+multi-instance production deployment should replace it with a transactional
+database.
 
 ## Verification Boundaries
 
 - **Real in MVP:** contract signature check, expiry, replay protection, cumulative per-agent spending limit, ERC-20 transfer, event-based receipt verification.
-- **Mock in MVP:** protocol ecosystem semantics, catalog/order persistence, merchant callbacks, KYT/KYC, Primus zkTLS, and the deployed `mUSDC` / `mUSDT` test tokens.
+- **Mock in MVP:** protocol ecosystem semantics, merchant callbacks, KYT/KYC, Primus zkTLS, and the deployed `mUSDC` / `mUSDT` test tokens.
 - **Never fabricate:** contract addresses, tx hashes, explorer links, provider integrations, or stablecoin token addresses.
 
 > **Verification logic shown here is a demonstration. Live KYT / KYC integration is under validation.**

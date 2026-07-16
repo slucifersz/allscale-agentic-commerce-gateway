@@ -5,6 +5,7 @@ const { randomUUID } = require("crypto");
 const { ethers } = require("ethers");
 const { getArtifact } = require("../scripts/compile");
 const { loadEnv } = require("../scripts/env");
+const { createDemoStateStore } = require("./state-store");
 const {
   AGENT_PROTOCOLS,
   CHECKOUT_TYPES,
@@ -19,6 +20,7 @@ const PORT = Number(process.env.PORT || "8787");
 const ROOT = process.cwd();
 const FRONTEND_FILE = path.join(ROOT, "frontend", "index.html");
 const SETTLEMENT_ABI = getArtifact("SettlementGateway").abi;
+const stateStore = createDemoStateStore(ROOT);
 
 const CATALOG = [
   {
@@ -46,10 +48,6 @@ const CATALOG = [
     metadata: { fulfillment: "digital", protocol: "AP2" },
   },
 ];
-
-const checkouts = new Map();
-const orders = new Map();
-const usedTxHashes = new Set();
 
 function readJson(filePath) {
   if (!fs.existsSync(filePath)) return null;
@@ -437,7 +435,7 @@ async function startCheckout(payload) {
     protocolPayload: protocolPayload(protocol, checkout, paymentInstruction),
     canAutoPay: config.canAutoPay,
   };
-  checkouts.set(id, response);
+  stateStore.putCheckout(id, response);
   return response;
 }
 
@@ -496,7 +494,7 @@ async function verifyReceipt(txHash, checkoutRecord) {
       statusCode: 400,
     });
   }
-  if (usedTxHashes.has(txHash.toLowerCase())) {
+  if (stateStore.hasUsedTransaction(txHash)) {
     throw Object.assign(new Error("transactionHash was already used"), {
       statusCode: 409,
     });
@@ -569,7 +567,6 @@ async function verifyReceipt(txHash, checkoutRecord) {
     );
   }
 
-  usedTxHashes.add(txHash.toLowerCase());
   return {
     network: `eip155:${expectedChainId}`,
     chainId: expectedChainId,
@@ -583,7 +580,7 @@ async function verifyReceipt(txHash, checkoutRecord) {
 
 async function completeOrder(payload) {
   const checkoutSessionId = payload.checkoutSessionId;
-  const checkoutRecord = checkouts.get(checkoutSessionId);
+  const checkoutRecord = stateStore.getCheckout(checkoutSessionId);
   if (!checkoutRecord) {
     throw Object.assign(new Error(`Unknown checkoutSessionId: ${checkoutSessionId}`), {
       statusCode: 404,
@@ -604,9 +601,12 @@ async function completeOrder(payload) {
     receipt,
     createdAt: new Date().toISOString(),
   };
-  orders.set(orderId, { order, checkout: checkoutRecord });
-  checkoutRecord.checkout.status = "paid";
-  return { ok: true, order };
+  const orderRecord = stateStore.completeOrder(
+    checkoutSessionId,
+    txHash,
+    order
+  );
+  return { ok: true, order: orderRecord.order };
 }
 
 function orderPage(record) {
@@ -692,6 +692,7 @@ async function route(req, res) {
       treasury: config.merchantTreasury || "_TBD",
       deploymentFile: config.deployment?.filePath || "",
       explorerBaseUrl: config.explorerBaseUrl || "",
+      statePersistent: stateStore.persistent,
     });
   }
 
@@ -707,7 +708,7 @@ async function route(req, res) {
 
   if (req.method === "GET" && url.pathname.startsWith("/demo/orders/")) {
     const orderId = decodeURIComponent(url.pathname.split("/").pop());
-    const record = orders.get(orderId);
+    const record = stateStore.getOrder(orderId);
     if (!record) return jsonResponse(res, 404, { error: "not_found" });
     return htmlResponse(res, 200, orderPage(record));
   }

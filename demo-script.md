@@ -69,7 +69,8 @@ Say:
 | Element | Status |
 |---|---|
 | Protocol payloads | demo implementations |
-| Catalog and orders | in-memory demo state |
+| Catalog | static demo data |
+| Checkouts, orders, tx deduplication | persistent single-process file store |
 | Gateway signature | real EIP-712 signature |
 | Settlement contract | real local/testnet contract |
 | ERC-20 transfer | real contract call using `mUSDC` / `mUSDT` mock token for MVP |

@@ -69,7 +69,7 @@ TOKEN_NAME="Mock USDT" TOKEN_SYMBOL=mUSDT npm run deploy:hashkey-token
 - `SettlementGateway.pay()` requires `msg.sender == agent`.
 - The gateway signature binds `checkoutId`, `merchantId`, `agent`, `token`, `amount`, `treasury`, `expiresAt`, and `metadataHash`.
 - Receipt verification in `server/demo-api.js` accepts a payment only if the transaction succeeded, targeted the configured contract, and emitted a matching `CheckoutSettled` event.
-- The demo API keeps checkout and order state in memory. Persistent storage is intentionally out of scope for this MVP.
+- The demo API atomically persists checkout, order, and transaction-deduplication state to `.data/demo-state.json` by default. This is a single-process demo store, not a multi-instance production database.
 - `deployments/local.json` is generated and ignored. Regenerate it whenever Anvil restarts.
 
 ## What Is Still Out Of Scope
